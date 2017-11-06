@@ -52,21 +52,39 @@ except:
 v1 = client.CoreV1Api()
 w = watch.Watch()
 
+try:
+    resource_version = v1.list_event_for_all_namespaces().items[-1].metadata.resource_version
+except:
+    resource_version = 0
+
 while True:
     try:
         for event in w.stream(v1.list_event_for_all_namespaces):
+            event_type = event['type'].lower()
             event = event['object']
 
             meta = {k: v for k, v in event.metadata.to_dict().items() if v is not None}
-            meta['source'] = event.source
-            meta['involved_object'] = {k: v for k, v in event.involved_object.to_dict().items() if v is not None}
+
+            if event.involved_object:
+                meta['involved_object'] = {k: v for k, v in event.involved_object.to_dict().items() if v is not None}
+
+            if event.source:
+                meta['source'] = event.source
 
             creation_timestamp = meta.pop('creation_timestamp', None)
 
-            level = event.type.lower()
+            level = (event.type and event.type.lower())
             level = LEVEL_MAPPING.get(level, level)
 
-            if level in ('warning', 'error'):
+            if level in ('warning', 'error') or event_type in ('error', ):
+                tags = {}
+                if event.reason:
+                    tags['reason'] = event.reason
+                if 'namespace' in meta:
+                    tags['namespace'] = meta['namespace']
+                if event.involved_object and event.involved_object.kind:
+                    tags['kind'] = event.involved_object and event.involved_object.kind
+
                 sentry.captureMessage(
                     event.message,
                     date=creation_timestamp,
@@ -75,23 +93,22 @@ while True:
                         'server_name': SERVER_NAME,
                     },
                     extra=meta,
-                    tags={
-                        'reason': event.reason,
-                        'namespace':meta['namespace'],
-                        'kind':  event.involved_object.kind,
-                    },
+                    tags=tags,
                     level=level,
                     environment=ENV,
                 )
+
+            data = {}
+            if 'name' in meta:
+                data['name'] = meta['name']
+            if 'namespace' in meta:
+                data['namespace'] = meta['namespace']
 
             breadcrumbs.record(
                 message=event.message,
                 level=level,
                 timestamp=creation_timestamp,
-                data={
-                    'name': meta['name'],
-                    'namespace': meta['namespace']
-                }
+                data=data,
             )
 
 
