@@ -1,3 +1,6 @@
+# TODO grouping
+# TODO only log events after startup
+
 from kubernetes import client, config, watch
 from kubernetes.client.rest import ApiException
 from raven import breadcrumbs
@@ -6,6 +9,7 @@ from raven import Client as SentryClient
 import logging
 import os
 from pprint import pprint
+import socket
 import sys
 import time
 
@@ -22,9 +26,16 @@ LEVEL_MAPPING = {
     'normal': 'info',
 }
 
-dsn = os.environ.get('DSN')
+SERVER_NAME = socket.gethostname() if hasattr(socket, 'gethostname') else None
+try:
+    SERVER_NAME = "-".join(SERVER_NAME.split("-")[:-2])
+except:
+    pass
+DSN = os.environ.get('DSN')
+ENV = os.environ.get('ENVIRONMENT')
+
 sentry = SentryClient(
-    dsn=dsn,
+    dsn=DSN,
     install_sys_hook=False,
     install_logging_hook=False,
     include_versions=False,
@@ -46,12 +57,6 @@ while True:
         for event in w.stream(v1.list_event_for_all_namespaces):
             event = event['object']
 
-            # TODO grouping?
-            # TODO only log events after startup?
-            # TODO server_name
-            # TODO environment
-            # TODO pull out tags
-
             meta = {k: v for k, v in event.metadata.to_dict().items() if v is not None}
             meta['source'] = event.source
             meta['involved_object'] = {k: v for k, v in event.involved_object.to_dict().items() if v is not None}
@@ -65,12 +70,18 @@ while True:
                 sentry.captureMessage(
                     event.message,
                     date=creation_timestamp,
-                    data={'sdk': SDK_VALUE},
+                    data={
+                        'sdk': SDK_VALUE,
+                        'server_name': SERVER_NAME,
+                    },
                     extra=meta,
                     tags={
                         'reason': event.reason,
+                        'namespace':meta['namespace'],
+                        'kind':  event.involved_object.kind,
                     },
                     level=level,
+                    environment=ENV,
                 )
 
             breadcrumbs.record(
