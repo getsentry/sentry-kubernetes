@@ -1,8 +1,13 @@
 from kubernetes import client, config, watch
 from kubernetes.client.rest import ApiException
+from raven import Client as SentryClient
 
+import os
 from pprint import pprint
 import time
+
+dsn = os.environ.get('DSN')
+sentry = SentryClient(dsn)
 
 # Configs can be set in Configuration class directly or using helper utility
 config.load_kube_config()
