@@ -1,5 +1,3 @@
-# TODO grouping?
-
 from kubernetes import client, config, watch
 from kubernetes.client.rest import ApiException
 from raven import breadcrumbs
@@ -84,29 +82,43 @@ def watch_loop():
             if v is not None
         }
 
-        if event.involved_object:
-            meta['involved_object'] = {
-                k: v for k, v
-                in event.involved_object.to_dict().items()
-                if v is not None
-            }
-
-        if event.source:
-            meta['source'] = event.source
-
         creation_timestamp = meta.pop('creation_timestamp', None)
 
         level = (event.type and event.type.lower())
         level = LEVEL_MAPPING.get(level, level)
 
         if level in ('warning', 'error') or event_type in ('error', ):
+            if event.involved_object:
+                meta['involved_object'] = {
+                    k: v for k, v
+                    in event.involved_object.to_dict().items()
+                    if v is not None
+                }
+
+            if event.source:
+                meta['source'] = event.source.to_dict()
+
+            fingerprint = []
             tags = {}
+
             if event.reason:
                 tags['reason'] = event.reason
-            if 'namespace' in meta:
+                fingerprint.append(event.reason)
+
+            if event.involved_object and event.involved_object.namespace:
+                tags['namespace'] = event.involved_object.namespace
+                fingerprint.append(event.involved_object.namespace)
+            elif 'namespace' in meta:
                 tags['namespace'] = meta['namespace']
+                fingerprint.append(meta['namespace'])
+
+            if event.involved_object and event.involved_object.name:
+                tags['name'] = event.involved_object.name
+                fingerprint.append(event.involved_object.name)
+
             if event.involved_object and event.involved_object.kind:
                 tags['kind'] = event.involved_object and event.involved_object.kind
+                fingerprint.append(event.involved_object.kind)
 
             data = {
                 'sdk': SDK_VALUE,
@@ -121,6 +133,7 @@ def watch_loop():
                 tags=tags,
                 level=level,
                 environment=ENV,
+                fingerprint=fingerprint,
             )
 
         data = {}
