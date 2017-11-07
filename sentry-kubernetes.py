@@ -1,5 +1,4 @@
-# TODO grouping
-# TODO only log events after startup
+# TODO grouping?
 
 from kubernetes import client, config, watch
 from kubernetes.client.rest import ApiException
@@ -43,7 +42,6 @@ sentry = SentryClient(
     context={},
 )
 
-# Configs can be set in Configuration class directly or using helper utility
 try:
     config.load_incluster_config()
 except:
@@ -59,14 +57,22 @@ except:
 
 while True:
     try:
-        for event in w.stream(v1.list_event_for_all_namespaces):
+        for event in w.stream(v1.list_event_for_all_namespaces, resource_version=resource_version):
             event_type = event['type'].lower()
             event = event['object']
 
-            meta = {k: v for k, v in event.metadata.to_dict().items() if v is not None}
+            meta = {
+                k: v for k, v
+                in event.metadata.to_dict().items()
+                if v is not None
+            }
 
             if event.involved_object:
-                meta['involved_object'] = {k: v for k, v in event.involved_object.to_dict().items() if v is not None}
+                meta['involved_object'] = {
+                    k: v for k, v
+                    in event.involved_object.to_dict().items()
+                    if v is not None
+                }
 
             if event.source:
                 meta['source'] = event.source
@@ -85,13 +91,15 @@ while True:
                 if event.involved_object and event.involved_object.kind:
                     tags['kind'] = event.involved_object and event.involved_object.kind
 
+                data = {
+                    'sdk': SDK_VALUE,
+                    'server_name': SERVER_NAME,
+                }
+
                 sentry.captureMessage(
                     event.message,
                     date=creation_timestamp,
-                    data={
-                        'sdk': SDK_VALUE,
-                        'server_name': SERVER_NAME,
-                    },
+                    data=data,
                     extra=meta,
                     tags=tags,
                     level=level,
@@ -110,8 +118,6 @@ while True:
                 timestamp=creation_timestamp,
                 data=data,
             )
-
-
     except ApiException as e:
         logging.error("Exception when calling CoreV1Api->list_event_for_all_namespaces: %s\n" % e)
         time.sleep(5)
