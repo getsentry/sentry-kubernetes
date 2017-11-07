@@ -47,6 +47,14 @@ def main():
     except:
         config.load_kube_config()
 
+    while True:
+        try:
+            watch_loop()
+        except ApiException as e:
+            logging.error("Exception when calling CoreV1Api->list_event_for_all_namespaces: %s\n" % e)
+            time.sleep(5)
+
+def watch_loop():
     v1 = client.CoreV1Api()
     w = watch.Watch()
 
@@ -64,73 +72,70 @@ def main():
     # except:
     #     resource_version = 0
 
-    while True:
-        try:
-            for event in w.stream(v1.list_event_for_all_namespaces):
-                logging.debug("event: %s" % event)
-                event_type = event['type'].lower()
-                event = event['object']
+    for event in w.stream(v1.list_event_for_all_namespaces):
+        logging.debug("event: %s" % event)
 
-                meta = {
-                    k: v for k, v
-                    in event.metadata.to_dict().items()
-                    if v is not None
-                }
+        event_type = event['type'].lower()
+        event = event['object']
 
-                if event.involved_object:
-                    meta['involved_object'] = {
-                        k: v for k, v
-                        in event.involved_object.to_dict().items()
-                        if v is not None
-                    }
+        meta = {
+            k: v for k, v
+            in event.metadata.to_dict().items()
+            if v is not None
+        }
 
-                if event.source:
-                    meta['source'] = event.source
+        if event.involved_object:
+            meta['involved_object'] = {
+                k: v for k, v
+                in event.involved_object.to_dict().items()
+                if v is not None
+            }
 
-                creation_timestamp = meta.pop('creation_timestamp', None)
+        if event.source:
+            meta['source'] = event.source
 
-                level = (event.type and event.type.lower())
-                level = LEVEL_MAPPING.get(level, level)
+        creation_timestamp = meta.pop('creation_timestamp', None)
 
-                if level in ('warning', 'error') or event_type in ('error', ):
-                    tags = {}
-                    if event.reason:
-                        tags['reason'] = event.reason
-                    if 'namespace' in meta:
-                        tags['namespace'] = meta['namespace']
-                    if event.involved_object and event.involved_object.kind:
-                        tags['kind'] = event.involved_object and event.involved_object.kind
+        level = (event.type and event.type.lower())
+        level = LEVEL_MAPPING.get(level, level)
 
-                    data = {
-                        'sdk': SDK_VALUE,
-                        'server_name': SERVER_NAME,
-                    }
+        if level in ('warning', 'error') or event_type in ('error', ):
+            tags = {}
+            if event.reason:
+                tags['reason'] = event.reason
+            if 'namespace' in meta:
+                tags['namespace'] = meta['namespace']
+            if event.involved_object and event.involved_object.kind:
+                tags['kind'] = event.involved_object and event.involved_object.kind
 
-                    sentry.captureMessage(
-                        event.message,
-                        date=creation_timestamp,
-                        data=data,
-                        extra=meta,
-                        tags=tags,
-                        level=level,
-                        environment=ENV,
-                    )
+            data = {
+                'sdk': SDK_VALUE,
+                'server_name': SERVER_NAME,
+            }
 
-                data = {}
-                if 'name' in meta:
-                    data['name'] = meta['name']
-                if 'namespace' in meta:
-                    data['namespace'] = meta['namespace']
+            sentry.captureMessage(
+                event.message,
+                date=creation_timestamp,
+                data=data,
+                extra=meta,
+                tags=tags,
+                level=level,
+                environment=ENV,
+            )
 
-                breadcrumbs.record(
-                    message=event.message,
-                    level=level,
-                    timestamp=creation_timestamp,
-                    data=data,
-                )
-        except ApiException as e:
-            logging.error("Exception when calling CoreV1Api->list_event_for_all_namespaces: %s\n" % e)
-            time.sleep(5)
+        data = {}
+        if 'name' in meta:
+            data['name'] = meta['name']
+        if 'namespace' in meta:
+            data['namespace'] = meta['namespace']
+
+        breadcrumbs.record(
+            message=event.message,
+            level=level,
+            timestamp=creation_timestamp,
+            data=data,
+        )
+
 
 if __name__ == '__main__':
     main()
