@@ -46,6 +46,9 @@ def main():
         except ApiException as e:
             logging.error("Exception when calling CoreV1Api->list_event_for_all_namespaces: %s\n" % e)
             time.sleep(5)
+        except Exception as e:
+            logging.exception("Unhandled exception occurred.")
+
 
 def watch_loop():
     v1 = client.CoreV1Api()
