@@ -22,11 +22,6 @@ LEVEL_MAPPING = {
     'normal': 'info',
 }
 
-SERVER_NAME = socket.gethostname() if hasattr(socket, 'gethostname') else None
-try:
-    SERVER_NAME = "-".join(SERVER_NAME.split("-")[:-2])
-except:
-    pass
 DSN = os.environ.get('DSN')
 ENV = os.environ.get('ENVIRONMENT')
 
@@ -87,12 +82,12 @@ def watch_loop():
         level = (event.type and event.type.lower())
         level = LEVEL_MAPPING.get(level, level)
 
-        source_component = source_host = reason = namespace = name = short_name = kind = None
+        component = source_host = reason = namespace = name = short_name = kind = None
         if event.source:
             source = event.source.to_dict()
 
             if 'component' in source:
-                source_component = source['component']
+                component = source['component']
             if 'host' in source:
                 source_host = source['host']
 
@@ -106,7 +101,11 @@ def watch_loop():
 
         if event.involved_object and event.involved_object.name:
             name = event.involved_object.name
-            short_name = "-".join(name.split('-')[:-2])
+            bits = name.split('-')
+            if len(bits) in (1, 2):
+                short_name = bits[0]
+            else:
+                short_name = "-".join(bits[:-2])
 
         if event.involved_object and event.involved_object.kind:
             kind = event.involved_object.kind
@@ -138,11 +137,8 @@ def watch_loop():
             fingerprint = []
             tags = {}
 
-            if source_component:
-                tags['source_component'] = source_component
-
-            if source_host:
-                tags['source_host'] = source_host
+            if component:
+                tags['component'] = component
 
             if reason:
                 tags['reason'] = event.reason
@@ -162,7 +158,7 @@ def watch_loop():
 
             data = {
                 'sdk': SDK_VALUE,
-                'server_name': SERVER_NAME,
+                'server_name': source_host or 'n/a',
                 'culprit': reason,
             }
 
