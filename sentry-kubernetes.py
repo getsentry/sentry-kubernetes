@@ -175,7 +175,7 @@ def watch_loop():
             data['namespace'] = namespace
 
         breadcrumbs.record(
-            # data=data,
+            data=data,
             level=level,
             message=message,
             timestamp=creation_timestamp,
