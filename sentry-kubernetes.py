@@ -112,19 +112,10 @@ def watch_loop():
 
         message = event.message
 
-        # if namespace and name:
-        #     culprit = "%s.%s" % (namespace, name)
-        #     # message = "%(msg)s (%(namespace)s/%(name)s)" % {
-        #     #     'namespace': namespace,
-        #     #     'name': name,
-        #     #     'msg': event.message,
-        #     # }
-        # else:
-        #     culprit = "%s" % (namespace, )
-        #     # message = "%(msg)s (%(namespace)s)" % {
-        #     #     'namespace': namespace,
-        #     #     'msg': event.message,
-        #     # }
+        if namespace and name:
+            obj_name = "(%s/%s)" % (namespace, name)
+        else:
+            obj_name = "(%s)" % (namespace, )
 
         if level in ('warning', 'error') or event_type in ('error', ):
             if event.involved_object:
@@ -159,7 +150,7 @@ def watch_loop():
             data = {
                 'sdk': SDK_VALUE,
                 'server_name': source_host or 'n/a',
-                'culprit': reason,
+                'culprit': "%s %s" % (obj_name, reason),
             }
 
             sentry.captureMessage(
