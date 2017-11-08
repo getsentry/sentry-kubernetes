@@ -87,6 +87,46 @@ def watch_loop():
         level = (event.type and event.type.lower())
         level = LEVEL_MAPPING.get(level, level)
 
+        source_component = source_host = reason = namespace = name = short_name = kind = None
+        if event.source:
+            source = event.source.to_dict()
+
+            if 'component' in source:
+                source_component = source['component']
+            if 'host' in source:
+                source_host = source['host']
+
+        if event.reason:
+            reason = event.reason
+
+        if event.involved_object and event.involved_object.namespace:
+            namespace = event.involved_object.namespace
+        elif 'namespace' in meta:
+            namespace = meta['namespace']
+
+        if event.involved_object and event.involved_object.name:
+            name = event.involved_object.name
+            short_name = "-".join(name.split('-')[:-2])
+
+        if event.involved_object and event.involved_object.kind:
+            kind = event.involved_object.kind
+
+        message = event.message
+
+        # if namespace and name:
+        #     culprit = "%s.%s" % (namespace, name)
+        #     # message = "%(msg)s (%(namespace)s/%(name)s)" % {
+        #     #     'namespace': namespace,
+        #     #     'name': name,
+        #     #     'msg': event.message,
+        #     # }
+        # else:
+        #     culprit = "%s" % (namespace, )
+        #     # message = "%(msg)s (%(namespace)s)" % {
+        #     #     'namespace': namespace,
+        #     #     'msg': event.message,
+        #     # }
+
         if level in ('warning', 'error') or event_type in ('error', ):
             if event.involved_object:
                 meta['involved_object'] = {
@@ -95,58 +135,60 @@ def watch_loop():
                     if v is not None
                 }
 
-            if event.source:
-                meta['source'] = event.source.to_dict()
-
             fingerprint = []
             tags = {}
 
-            if event.reason:
+            if source_component:
+                tags['source_component'] = source_component
+
+            if source_host:
+                tags['source_host'] = source_host
+
+            if reason:
                 tags['reason'] = event.reason
                 fingerprint.append(event.reason)
 
-            if event.involved_object and event.involved_object.namespace:
-                tags['namespace'] = event.involved_object.namespace
-                fingerprint.append(event.involved_object.namespace)
-            elif 'namespace' in meta:
-                tags['namespace'] = meta['namespace']
-                fingerprint.append(meta['namespace'])
+            if namespace:
+                tags['namespace'] = namespace
+                fingerprint.append(namespace)
 
-            if event.involved_object and event.involved_object.name:
-                tags['name'] = event.involved_object.name
-                fingerprint.append(event.involved_object.name)
+            if short_name:
+                tags['name'] = short_name
+                fingerprint.append(short_name)
 
-            if event.involved_object and event.involved_object.kind:
-                tags['kind'] = event.involved_object and event.involved_object.kind
-                fingerprint.append(event.involved_object.kind)
+            if kind:
+                tags['kind'] = kind
+                fingerprint.append(kind)
 
             data = {
                 'sdk': SDK_VALUE,
                 'server_name': SERVER_NAME,
+                'culprit': reason,
             }
 
             sentry.captureMessage(
-                event.message,
-                date=creation_timestamp,
+                message,
+                # culprit=culprit,
                 data=data,
-                extra=meta,
-                tags=tags,
-                level=level,
+                date=creation_timestamp,
                 environment=ENV,
+                extra=meta,
                 fingerprint=fingerprint,
+                level=level,
+                tags=tags,
             )
 
         data = {}
-        if 'name' in meta:
-            data['name'] = meta['name']
-        if 'namespace' in meta:
-            data['namespace'] = meta['namespace']
+        if name:
+            data['name'] = name
+        if namespace:
+            data['namespace'] = namespace
 
         breadcrumbs.record(
-            message=event.message,
+            # data=data,
             level=level,
+            message=message,
             timestamp=creation_timestamp,
-            data=data,
         )
 
 
