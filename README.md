@@ -1,19 +1,27 @@
 sentry-kubernetes
 =================
 
-Watches Kubernetes events for warnings and errors and reports them to Sentry.
+Errors and warnings in Kubernetes often go unnoticed by operators. Even when they are checked they are hard to read and understand in the context of what else is going on in the cluster. `sentry-kubernetes` is a small container you launch inside your Kubernetes cluster that will send errors and warnings to Sentry where they will be cleanly presented and intelligently grouped. Typical Sentry features such as notifications can then be used to help operation and developer visibility.
+
+Create a new project on [Sentry](http://sentry.io/) and use your DSN when launching the `sentry-kubernetes` container:
 
     kubectl run sentry-kubernetes \
       --image bretthoerner/sentry-kubernetes \
       --env="DSN=$YOUR_DSN"
 
+---
+
 Events are grouped in Sentry:
 
 ![1](/1.png)
 
+---
+
 They come with useful tags for filtering, and breadcrumbs showing events that occurred prior to the warning/error:
 
 ![2](/2.png)
+
+---
 
 And include all of the extra data attached to the event:
 
