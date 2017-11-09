@@ -115,8 +115,8 @@ def watch_loop():
 
         message = event.message
 
-        if namespace and name:
-            obj_name = "(%s/%s)" % (namespace, name)
+        if namespace and short_name:
+            obj_name = "(%s/%s)" % (namespace, short_name)
         else:
             obj_name = "(%s)" % (namespace, )
 
