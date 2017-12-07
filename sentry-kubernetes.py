@@ -24,6 +24,7 @@ LEVEL_MAPPING = {
 
 DSN = os.environ.get('DSN')
 ENV = os.environ.get('ENVIRONMENT')
+RELEASE = os.environ.get('RELEASE')
 
 
 def main():
@@ -61,6 +62,8 @@ def watch_loop():
         include_versions=False,
         capture_locals=False,
         context={},
+        environment=ENV,
+        release=RELEASE,
     )
 
     # try:
@@ -161,7 +164,6 @@ def watch_loop():
                 # culprit=culprit,
                 data=data,
                 date=creation_timestamp,
-                environment=ENV,
                 extra=meta,
                 fingerprint=fingerprint,
                 level=level,
