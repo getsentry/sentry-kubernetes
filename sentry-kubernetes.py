@@ -2,6 +2,7 @@ from kubernetes import client, config, watch
 from kubernetes.client.rest import ApiException
 from raven import breadcrumbs
 from raven import Client as SentryClient
+from raven.transport.threaded_requests import ThreadedRequestsHTTPTransport
 
 import argparse
 import logging
@@ -64,6 +65,7 @@ def watch_loop():
         context={},
         environment=ENV,
         release=RELEASE,
+        transport=ThreadedRequestsHTTPTransport,
     )
 
     # try:
