@@ -6,7 +6,7 @@ Errors and warnings in Kubernetes often go unnoticed by operators. Even when the
 Create a new project on [Sentry](http://sentry.io/) and use your DSN when launching the `sentry-kubernetes` container:
 
     kubectl run sentry-kubernetes \
-      --image bretthoerner/sentry-kubernetes \
+      --image getsentry/sentry-kubernetes \
       --env="DSN=$YOUR_DSN"
 
 ---
