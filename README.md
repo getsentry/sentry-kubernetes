@@ -26,3 +26,12 @@ They come with useful tags for filtering, and breadcrumbs showing events that oc
 And include all of the extra data attached to the event:
 
 ![3](/3.png)
+
+## Install using helm charts
+
+```console
+$ helm repo add incubator https://kubernetes-charts-incubator.storage.googleapis.com/
+"incubator" has been added to your repositories
+
+$ helm install incubator/sentry-kubernetes --name my-release --set sentry.dsn=<your-dsn>
+```
