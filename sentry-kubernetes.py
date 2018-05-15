@@ -182,7 +182,7 @@ def watch_loop():
             data=data,
             level=level,
             message=message,
-            timestamp=creation_timestamp,
+            timestamp=time.mktime(creation_timestamp.timetuple()),
         )
 
 
