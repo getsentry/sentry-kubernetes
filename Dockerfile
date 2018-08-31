@@ -17,4 +17,4 @@ RUN apt-get update && \
 COPY --from=build-image /usr/local/lib/python3.6/site-packages/ /usr/local/lib/python3.6/site-packages/
 COPY sentry-kubernetes.py ./
 USER app
-CMD [ "python", "./sentry-kubernetes.py"]
+CMD [ "python", "./sentry-kubernetes.py" ]
