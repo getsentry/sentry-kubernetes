@@ -3,6 +3,7 @@ from kubernetes.client.rest import ApiException
 from raven import breadcrumbs
 from raven import Client as SentryClient
 from raven.transport.threaded_requests import ThreadedRequestsHTTPTransport
+from urllib3.exceptions import ProtocolError
 
 import argparse
 import logging
@@ -48,6 +49,8 @@ def main():
         except ApiException as e:
             logging.error("Exception when calling CoreV1Api->list_event_for_all_namespaces: %s\n" % e)
             time.sleep(5)
+        except ProtocolError:
+            logging.warning("ProtocolError exception. Continuing...")
         except Exception as e:
             logging.exception("Unhandled exception occurred.")
 
