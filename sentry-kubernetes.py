@@ -116,16 +116,19 @@ def watch_loop():
         elif 'namespace' in meta:
             namespace = meta['namespace']
 
-        if event.involved_object and event.involved_object.name:
-            name = event.involved_object.name
-            bits = name.split('-')
-            if len(bits) in (1, 2):
-                short_name = bits[0]
-            else:
-                short_name = "-".join(bits[:-2])
-
         if event.involved_object and event.involved_object.kind:
             kind = event.involved_object.kind
+
+        if event.involved_object and event.involved_object.name:
+            name = event.involved_object.name
+            if kind in ("Pod", "ReplicaSet", "StatefulSet"):
+                bits = name.split('-')
+                if len(bits) in (1, 2):
+                    short_name = bits[0]
+                else:
+                    short_name = "-".join(bits[:-2])
+            else:
+                short_name = name
 
         message = event.message
 
