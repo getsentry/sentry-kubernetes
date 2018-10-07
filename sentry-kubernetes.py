@@ -27,6 +27,7 @@ LEVEL_MAPPING = {
 DSN = os.environ.get('DSN')
 ENV = os.environ.get('ENVIRONMENT')
 RELEASE = os.environ.get('RELEASE')
+EVENT_NAMESPACE = os.environ.get('EVENT_NAMESPACE')
 
 
 def main():
@@ -76,7 +77,12 @@ def watch_loop():
     # except:
     #     resource_version = 0
 
-    for event in w.stream(v1.list_event_for_all_namespaces):
+    if EVENT_NAMESPACE:
+        stream = w.stream(v1.list_namespaced_event, EVENT_NAMESPACE)
+    else:
+        stream = w.stream(v1.list_event_for_all_namespaces)
+
+    for event in stream:
         logging.debug("event: %s" % event)
 
         event_type = event['type'].lower()
