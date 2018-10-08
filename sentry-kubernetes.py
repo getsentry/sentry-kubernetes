@@ -122,7 +122,7 @@ def watch_loop():
 
         if event.involved_object and event.involved_object.name:
             name = event.involved_object.name
-            if kind in MANGLE_NAMES:
+            if not MANGLE_NAMES or kind in MANGLE_NAMES:
                 bits = name.split('-')
                 if len(bits) in (1, 2):
                     short_name = bits[0]
