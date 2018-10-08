@@ -28,6 +28,7 @@ DSN = os.environ.get('DSN')
 ENV = os.environ.get('ENVIRONMENT')
 RELEASE = os.environ.get('RELEASE')
 EVENT_NAMESPACE = os.environ.get('EVENT_NAMESPACE')
+MANGLE_NAMES = [name for name in os.environ.get('MANGLE_NAMES', default='').split(',') if name]
 
 
 def main():
@@ -116,16 +117,19 @@ def watch_loop():
         elif 'namespace' in meta:
             namespace = meta['namespace']
 
-        if event.involved_object and event.involved_object.name:
-            name = event.involved_object.name
-            bits = name.split('-')
-            if len(bits) in (1, 2):
-                short_name = bits[0]
-            else:
-                short_name = "-".join(bits[:-2])
-
         if event.involved_object and event.involved_object.kind:
             kind = event.involved_object.kind
+
+        if event.involved_object and event.involved_object.name:
+            name = event.involved_object.name
+            if not MANGLE_NAMES or kind in MANGLE_NAMES:
+                bits = name.split('-')
+                if len(bits) in (1, 2):
+                    short_name = bits[0]
+                else:
+                    short_name = "-".join(bits[:-2])
+            else:
+                short_name = name
 
         message = event.message
 
