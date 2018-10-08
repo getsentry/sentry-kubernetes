@@ -28,6 +28,7 @@ DSN = os.environ.get('DSN')
 ENV = os.environ.get('ENVIRONMENT')
 RELEASE = os.environ.get('RELEASE')
 EVENT_NAMESPACE = os.environ.get('EVENT_NAMESPACE')
+MANGLE_NAMES = [name for name in os.environ.get('MANGLE_NAMES', default='').split(',') if name]
 
 
 def main():
@@ -121,7 +122,7 @@ def watch_loop():
 
         if event.involved_object and event.involved_object.name:
             name = event.involved_object.name
-            if kind in ("Pod", "ReplicaSet", "StatefulSet"):
+            if kind in MANGLE_NAMES:
                 bits = name.split('-')
                 if len(bits) in (1, 2):
                     short_name = bits[0]
