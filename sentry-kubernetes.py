@@ -29,11 +29,11 @@ ENV = os.environ.get('ENVIRONMENT')
 RELEASE = os.environ.get('RELEASE')
 EVENT_NAMESPACE = os.environ.get('EVENT_NAMESPACE')
 MANGLE_NAMES = [name for name in os.environ.get('MANGLE_NAMES', default='').split(',') if name]
-
+LOG_LEVEL = os.environ.get('LOG_LEVEL', 'error')
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--log-level", default="error")
+    parser.add_argument("--log-level", default=LOG_LEVEL)
     args = parser.parse_args()
 
     log_level = args.log_level.upper()
