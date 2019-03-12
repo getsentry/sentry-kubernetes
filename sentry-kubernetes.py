@@ -27,9 +27,14 @@ LEVEL_MAPPING = {
 DSN = os.environ.get('DSN')
 ENV = os.environ.get('ENVIRONMENT')
 RELEASE = os.environ.get('RELEASE')
-EVENT_NAMESPACE = os.environ.get('EVENT_NAMESPACE')
-MANGLE_NAMES = [name for name in os.environ.get('MANGLE_NAMES', default='').split(',') if name]
+EVENT_NAMESPACES = [ns for ns in os.environ.get(
+    'EVENT_NAMESPACES', default='').split(',') if ns]
+MANGLE_NAMES = [name for name in os.environ.get(
+    'MANGLE_NAMES', default='').split(',') if name]
 LOG_LEVEL = os.environ.get('LOG_LEVEL', 'error')
+EVENT_LEVELS = [level for level in os.environ.get(
+    'EVENT_LEVELS', default='').split(',') if level]
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -49,7 +54,8 @@ def main():
         try:
             watch_loop()
         except ApiException as e:
-            logging.error("Exception when calling CoreV1Api->list_event_for_all_namespaces: %s\n" % e)
+            logging.error(
+                "Exception when calling CoreV1Api->list_event_for_all_namespaces: %s\n" % e)
             time.sleep(5)
         except ProtocolError:
             logging.warning("ProtocolError exception. Continuing...")
@@ -78,8 +84,8 @@ def watch_loop():
     # except:
     #     resource_version = 0
 
-    if EVENT_NAMESPACE:
-        stream = w.stream(v1.list_namespaced_event, EVENT_NAMESPACE)
+    if EVENT_NAMESPACES and len(EVENT_NAMESPACES) == 1:
+        stream = w.stream(v1.list_namespaced_event, EVENT_NAMESPACES[0])
     else:
         stream = w.stream(v1.list_event_for_all_namespaces)
 
@@ -117,6 +123,9 @@ def watch_loop():
         elif 'namespace' in meta:
             namespace = meta['namespace']
 
+        if namespace and namespace not in EVENT_NAMESPACES:
+            continue
+
         if event.involved_object and event.involved_object.kind:
             kind = event.involved_object.kind
 
@@ -138,7 +147,7 @@ def watch_loop():
         else:
             obj_name = "(%s)" % (namespace, )
 
-        if level in ('warning', 'error') or event_type in ('error', ):
+        if level in EVENT_LEVELS or event_type in ('error', ):
             if event.involved_object:
                 meta['involved_object'] = {
                     k: v for k, v
