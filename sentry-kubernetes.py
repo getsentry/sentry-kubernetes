@@ -8,9 +8,6 @@ from urllib3.exceptions import ProtocolError
 import argparse
 import logging
 import os
-from pprint import pprint
-import socket
-import sys
 import time
 
 
@@ -24,12 +21,32 @@ LEVEL_MAPPING = {
     'normal': 'info',
 }
 
+LOG_LEVEL = os.environ.get('LOG_LEVEL', 'error')
 DSN = os.environ.get('DSN')
 ENV = os.environ.get('ENVIRONMENT')
 RELEASE = os.environ.get('RELEASE')
-EVENT_NAMESPACE = os.environ.get('EVENT_NAMESPACE')
-MANGLE_NAMES = [name for name in os.environ.get('MANGLE_NAMES', default='').split(',') if name]
-LOG_LEVEL = os.environ.get('LOG_LEVEL', 'error')
+
+def _listify_env(name, default=None):
+    value = os.getenv(name) or ''
+    result = []
+
+    for item in value.split(','):
+        item = item.strip()
+        if item:
+            result.append(item)
+
+    if not result and default:
+        return default
+
+    return result
+
+MANGLE_NAMES = _listify_env('MANGLE_NAMES')
+EVENT_LEVELS = _listify_env('EVENT_LEVELS', ['warning', 'error'])
+REASONS_EXCLUDED = _listify_env('REASON_FILTER')
+COMPONENTS_EXCLUDED = _listify_env('COMPONENT_FILTER')
+DEPRECATED_EVENT_NAMESPACE = [os.getenv('EVENT_NAMESPACE')] if os.getenv('EVENT_NAMESPACE') else None
+EVENT_NAMESPACES = _listify_env('EVENT_NAMESPACES', DEPRECATED_EVENT_NAMESPACE)
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -49,7 +66,8 @@ def main():
         try:
             watch_loop()
         except ApiException as e:
-            logging.error("Exception when calling CoreV1Api->list_event_for_all_namespaces: %s\n" % e)
+            logging.error(
+                "Exception when calling CoreV1Api->list_event_for_all_namespaces: %s\n" % e)
             time.sleep(5)
         except ProtocolError:
             logging.warning("ProtocolError exception. Continuing...")
@@ -58,9 +76,11 @@ def main():
 
 
 def watch_loop():
+    logging.info("Starting Kubernetes watcher")
     v1 = client.CoreV1Api()
     w = watch.Watch()
 
+    logging.info("Initializing Sentry client")
     sentry = SentryClient(
         dsn=DSN,
         install_sys_hook=False,
@@ -78,8 +98,8 @@ def watch_loop():
     # except:
     #     resource_version = 0
 
-    if EVENT_NAMESPACE:
-        stream = w.stream(v1.list_namespaced_event, EVENT_NAMESPACE)
+    if EVENT_NAMESPACES and len(EVENT_NAMESPACES) == 1:
+        stream = w.stream(v1.list_namespaced_event, EVENT_NAMESPACES[0])
     else:
         stream = w.stream(v1.list_event_for_all_namespaces)
 
@@ -104,18 +124,23 @@ def watch_loop():
         if event.source:
             source = event.source.to_dict()
 
-            if 'component' in source:
+            if 'component' in source :
                 component = source['component']
+                if COMPONENTS_EXCLUDED and component in COMPONENTS_EXCLUDED: continue
             if 'host' in source:
                 source_host = source['host']
 
         if event.reason:
             reason = event.reason
+            if REASONS_EXCLUDED and reason in REASONS_EXCLUDED: continue
 
         if event.involved_object and event.involved_object.namespace:
             namespace = event.involved_object.namespace
         elif 'namespace' in meta:
             namespace = meta['namespace']
+
+        if namespace and EVENT_NAMESPACES and namespace not in EVENT_NAMESPACES:
+            continue
 
         if event.involved_object and event.involved_object.kind:
             kind = event.involved_object.kind
@@ -138,7 +163,7 @@ def watch_loop():
         else:
             obj_name = "(%s)" % (namespace, )
 
-        if level in ('warning', 'error') or event_type in ('error', ):
+        if level in EVENT_LEVELS or event_type in ('error', ):
             if event.involved_object:
                 meta['involved_object'] = {
                     k: v for k, v
@@ -173,6 +198,8 @@ def watch_loop():
                 'server_name': source_host or 'n/a',
                 'culprit': "%s %s" % (obj_name, reason),
             }
+
+            logging.debug("Sending event to Sentry:\n{}".format(data))
 
             sentry.captureMessage(
                 message,
