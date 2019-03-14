@@ -8,9 +8,6 @@ from urllib3.exceptions import ProtocolError
 import argparse
 import logging
 import os
-from pprint import pprint
-import socket
-import sys
 import time
 
 
@@ -27,13 +24,17 @@ LEVEL_MAPPING = {
 DSN = os.environ.get('DSN')
 ENV = os.environ.get('ENVIRONMENT')
 RELEASE = os.environ.get('RELEASE')
-EVENT_NAMESPACES = [ns for ns in os.environ.get(
-    'EVENT_NAMESPACES', default='').split(',') if ns]
-MANGLE_NAMES = [name for name in os.environ.get(
-    'MANGLE_NAMES', default='').split(',') if name]
+MANGLE_NAMES = [name for name in os.getenv(
+    'MANGLE_NAMES', '').split(',') if name]
 LOG_LEVEL = os.environ.get('LOG_LEVEL', 'error')
-EVENT_LEVELS = [level for level in os.environ.get(
-    'EVENT_LEVELS', default='').split(',') if level]
+EVENT_LEVELS = [level for level in os.getenv(
+    'EVENT_LEVELS', 'warning,error').split(',') if level]
+REASONS_EXCLUDED = [reason for reason in os.getenv(
+    'REASON_FILTER', '').split(',') if reason]
+COMPONENTS_EXCLUDED = [comp for comp in os.getenv(
+    'COMPONENT_FILTER', '').split(',') if comp]
+EVENT_NAMESPACES = [ns for ns in os.getenv(
+    'EVENT_NAMESPACES', '').split(',') if ns]
 
 
 def main():
@@ -64,9 +65,10 @@ def main():
 
 
 def watch_loop():
+    logging.info("Starting kubernetes watcher")
     v1 = client.CoreV1Api()
     w = watch.Watch()
-
+    logging.info("Initializing sentry client")
     sentry = SentryClient(
         dsn=DSN,
         install_sys_hook=False,
@@ -110,20 +112,22 @@ def watch_loop():
         if event.source:
             source = event.source.to_dict()
 
-            if 'component' in source:
+            if 'component' in source :
                 component = source['component']
+                if COMPONENTS_EXCLUDED and component in COMPONENTS_EXCLUDED: continue
             if 'host' in source:
                 source_host = source['host']
 
         if event.reason:
             reason = event.reason
+            if REASONS_EXCLUDED and reason in REASONS_EXCLUDED: continue
 
         if event.involved_object and event.involved_object.namespace:
             namespace = event.involved_object.namespace
         elif 'namespace' in meta:
             namespace = meta['namespace']
 
-        if namespace and namespace not in EVENT_NAMESPACES:
+        if namespace and EVENT_NAMESPACES and namespace not in EVENT_NAMESPACES:
             continue
 
         if event.involved_object and event.involved_object.kind:
@@ -182,6 +186,8 @@ def watch_loop():
                 'server_name': source_host or 'n/a',
                 'culprit': "%s %s" % (obj_name, reason),
             }
+
+            logging.debug("Sending following item to sentry:\n{}".format(data))
 
             sentry.captureMessage(
                 message,
