@@ -21,20 +21,31 @@ LEVEL_MAPPING = {
     'normal': 'info',
 }
 
+LOG_LEVEL = os.environ.get('LOG_LEVEL', 'error')
 DSN = os.environ.get('DSN')
 ENV = os.environ.get('ENVIRONMENT')
 RELEASE = os.environ.get('RELEASE')
-MANGLE_NAMES = [name for name in os.getenv(
-    'MANGLE_NAMES', '').split(',') if name]
-LOG_LEVEL = os.environ.get('LOG_LEVEL', 'error')
-EVENT_LEVELS = [level for level in os.getenv(
-    'EVENT_LEVELS', 'warning,error').split(',') if level]
-REASONS_EXCLUDED = [reason for reason in os.getenv(
-    'REASON_FILTER', '').split(',') if reason]
-COMPONENTS_EXCLUDED = [comp for comp in os.getenv(
-    'COMPONENT_FILTER', '').split(',') if comp]
-EVENT_NAMESPACES = [ns for ns in os.getenv(
-    'EVENT_NAMESPACES', '').split(',') if ns]
+
+def _listify_env(name, default=None):
+    value = os.getenv(name) or ''
+    result = []
+
+    for item in value.split(','):
+        item = item.strip()
+        if item:
+            result.append(item)
+
+    if not result and default:
+        return default
+
+    return result
+
+MANGLE_NAMES = _listify_env('MANGLE_NAMES')
+EVENT_LEVELS = _listify_env('EVENT_LEVELS', ['warning', 'error'])
+REASONS_EXCLUDED = _listify_env('REASON_FILTER')
+COMPONENTS_EXCLUDED = _listify_env('COMPONENT_FILTER')
+DEPRECATED_EVENT_NAMESPACE = [os.getenv('EVENT_NAMESPACE')] if os.getenv('EVENT_NAMESPACE') else None
+EVENT_NAMESPACES = _listify_env('EVENT_NAMESPACES', DEPRECATED_EVENT_NAMESPACE)
 
 
 def main():
@@ -65,10 +76,11 @@ def main():
 
 
 def watch_loop():
-    logging.info("Starting kubernetes watcher")
+    logging.info("Starting Kubernetes watcher")
     v1 = client.CoreV1Api()
     w = watch.Watch()
-    logging.info("Initializing sentry client")
+
+    logging.info("Initializing Sentry client")
     sentry = SentryClient(
         dsn=DSN,
         install_sys_hook=False,
@@ -187,7 +199,7 @@ def watch_loop():
                 'culprit': "%s %s" % (obj_name, reason),
             }
 
-            logging.debug("Sending following item to sentry:\n{}".format(data))
+            logging.debug("Sending event to Sentry:\n{}".format(data))
 
             sentry.captureMessage(
                 message,
