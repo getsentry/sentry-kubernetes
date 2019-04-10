@@ -11,26 +11,22 @@ import os
 import time
 
 
-SDK_VALUE = {
-    'name': 'sentry-kubernetes',
-    'version': '1.0.0',
-}
+SDK_VALUE = {"name": "sentry-kubernetes", "version": "1.0.0"}
 
 # mapping from k8s event types to event levels
-LEVEL_MAPPING = {
-    'normal': 'info',
-}
+LEVEL_MAPPING = {"normal": "info"}
 
-LOG_LEVEL = os.environ.get('LOG_LEVEL', 'error')
-DSN = os.environ.get('DSN')
-ENV = os.environ.get('ENVIRONMENT')
-RELEASE = os.environ.get('RELEASE')
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "error")
+DSN = os.environ.get("DSN")
+ENV = os.environ.get("ENVIRONMENT")
+RELEASE = os.environ.get("RELEASE")
+
 
 def _listify_env(name, default=None):
-    value = os.getenv(name) or ''
+    value = os.getenv(name) or ""
     result = []
 
-    for item in value.split(','):
+    for item in value.split(","):
         item = item.strip()
         if item:
             result.append(item)
@@ -40,12 +36,15 @@ def _listify_env(name, default=None):
 
     return result
 
-MANGLE_NAMES = _listify_env('MANGLE_NAMES')
-EVENT_LEVELS = _listify_env('EVENT_LEVELS', ['warning', 'error'])
-REASONS_EXCLUDED = _listify_env('REASON_FILTER')
-COMPONENTS_EXCLUDED = _listify_env('COMPONENT_FILTER')
-DEPRECATED_EVENT_NAMESPACE = [os.getenv('EVENT_NAMESPACE')] if os.getenv('EVENT_NAMESPACE') else None
-EVENT_NAMESPACES = _listify_env('EVENT_NAMESPACES', DEPRECATED_EVENT_NAMESPACE)
+
+MANGLE_NAMES = _listify_env("MANGLE_NAMES")
+EVENT_LEVELS = _listify_env("EVENT_LEVELS", ["warning", "error"])
+REASONS_EXCLUDED = _listify_env("REASON_FILTER")
+COMPONENTS_EXCLUDED = _listify_env("COMPONENT_FILTER")
+DEPRECATED_EVENT_NAMESPACE = (
+    [os.getenv("EVENT_NAMESPACE")] if os.getenv("EVENT_NAMESPACE") else None
+)
+EVENT_NAMESPACES = _listify_env("EVENT_NAMESPACES", DEPRECATED_EVENT_NAMESPACE)
 
 
 def main():
@@ -54,7 +53,7 @@ def main():
     args = parser.parse_args()
 
     log_level = args.log_level.upper()
-    logging.basicConfig(format='%(asctime)s %(message)s', level=log_level)
+    logging.basicConfig(format="%(asctime)s %(message)s", level=log_level)
     logging.debug("log_level: %s" % log_level)
 
     try:
@@ -67,7 +66,9 @@ def main():
             watch_loop()
         except ApiException as e:
             logging.error(
-                "Exception when calling CoreV1Api->list_event_for_all_namespaces: %s\n" % e)
+                "Exception when calling CoreV1Api->list_event_for_all_namespaces: %s\n"
+                % e
+            )
             time.sleep(5)
         except ProtocolError:
             logging.warning("ProtocolError exception. Continuing...")
@@ -106,38 +107,36 @@ def watch_loop():
     for event in stream:
         logging.debug("event: %s" % event)
 
-        event_type = event['type'].lower()
-        event = event['object']
+        event_type = event["type"].lower()
+        event = event["object"]
 
-        meta = {
-            k: v for k, v
-            in event.metadata.to_dict().items()
-            if v is not None
-        }
+        meta = {k: v for k, v in event.metadata.to_dict().items() if v is not None}
 
-        creation_timestamp = meta.pop('creation_timestamp', None)
+        creation_timestamp = meta.pop("creation_timestamp", None)
 
-        level = (event.type and event.type.lower())
+        level = event.type and event.type.lower()
         level = LEVEL_MAPPING.get(level, level)
 
         component = source_host = reason = namespace = name = short_name = kind = None
         if event.source:
             source = event.source.to_dict()
 
-            if 'component' in source :
-                component = source['component']
-                if COMPONENTS_EXCLUDED and component in COMPONENTS_EXCLUDED: continue
-            if 'host' in source:
-                source_host = source['host']
+            if "component" in source:
+                component = source["component"]
+                if COMPONENTS_EXCLUDED and component in COMPONENTS_EXCLUDED:
+                    continue
+            if "host" in source:
+                source_host = source["host"]
 
         if event.reason:
             reason = event.reason
-            if REASONS_EXCLUDED and reason in REASONS_EXCLUDED: continue
+            if REASONS_EXCLUDED and reason in REASONS_EXCLUDED:
+                continue
 
         if event.involved_object and event.involved_object.namespace:
             namespace = event.involved_object.namespace
-        elif 'namespace' in meta:
-            namespace = meta['namespace']
+        elif "namespace" in meta:
+            namespace = meta["namespace"]
 
         if namespace and EVENT_NAMESPACES and namespace not in EVENT_NAMESPACES:
             continue
@@ -148,7 +147,7 @@ def watch_loop():
         if event.involved_object and event.involved_object.name:
             name = event.involved_object.name
             if not MANGLE_NAMES or kind in MANGLE_NAMES:
-                bits = name.split('-')
+                bits = name.split("-")
                 if len(bits) in (1, 2):
                     short_name = bits[0]
                 else:
@@ -161,13 +160,13 @@ def watch_loop():
         if namespace and short_name:
             obj_name = "(%s/%s)" % (namespace, short_name)
         else:
-            obj_name = "(%s)" % (namespace, )
+            obj_name = "(%s)" % (namespace,)
 
-        if level in EVENT_LEVELS or event_type in ('error', ):
+        if level in EVENT_LEVELS or event_type in ("error",):
             if event.involved_object:
-                meta['involved_object'] = {
-                    k: v for k, v
-                    in event.involved_object.to_dict().items()
+                meta["involved_object"] = {
+                    k: v
+                    for k, v in event.involved_object.to_dict().items()
                     if v is not None
                 }
 
@@ -175,28 +174,28 @@ def watch_loop():
             tags = {}
 
             if component:
-                tags['component'] = component
+                tags["component"] = component
 
             if reason:
-                tags['reason'] = event.reason
+                tags["reason"] = event.reason
                 fingerprint.append(event.reason)
 
             if namespace:
-                tags['namespace'] = namespace
+                tags["namespace"] = namespace
                 fingerprint.append(namespace)
 
             if short_name:
-                tags['name'] = short_name
+                tags["name"] = short_name
                 fingerprint.append(short_name)
 
             if kind:
-                tags['kind'] = kind
+                tags["kind"] = kind
                 fingerprint.append(kind)
 
             data = {
-                'sdk': SDK_VALUE,
-                'server_name': source_host or 'n/a',
-                'culprit': "%s %s" % (obj_name, reason),
+                "sdk": SDK_VALUE,
+                "server_name": source_host or "n/a",
+                "culprit": "%s %s" % (obj_name, reason),
             }
 
             logging.debug("Sending event to Sentry:\n{}".format(data))
@@ -214,9 +213,9 @@ def watch_loop():
 
         data = {}
         if name:
-            data['name'] = name
+            data["name"] = name
         if namespace:
-            data['namespace'] = namespace
+            data["namespace"] = namespace
 
         breadcrumbs.record(
             data=data,
@@ -226,5 +225,5 @@ def watch_loop():
         )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
