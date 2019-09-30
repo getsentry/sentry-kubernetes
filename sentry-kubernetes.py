@@ -20,6 +20,7 @@ LOG_LEVEL = os.environ.get("LOG_LEVEL", "error")
 DSN = os.environ.get("DSN")
 ENV = os.environ.get("ENVIRONMENT")
 RELEASE = os.environ.get("RELEASE")
+CLUSTER_NAME = os.environ.get("CLUSTER_NAME")
 
 
 def _listify_env(name, default=None):
@@ -172,6 +173,9 @@ def watch_loop():
 
             fingerprint = []
             tags = {}
+
+            if CLUSTER_NAME:
+                tags["cluster"] = CLUSTER_NAME
 
             if component:
                 tags["component"] = component
