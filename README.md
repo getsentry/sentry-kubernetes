@@ -9,6 +9,12 @@ Create a new project on [Sentry](http://sentry.io/) and use your DSN when launch
       --image getsentry/sentry-kubernetes \
       --env="DSN=$YOUR_DSN"
 
+# Filters and options
+See the full list in sentry-kubernetes.py
+| ENV var | Type | Description |
+---------|------|-------------
+EVENT_NAMESPACES_EXCLUDED | `string` | A comma-separated list of namespaces. Ex.: 'qa,demo'. Events from these namespaces won't be sent to Sentry.
+
 ---
 
 Events are grouped in Sentry:
