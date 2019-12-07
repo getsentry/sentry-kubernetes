@@ -16,12 +16,12 @@ SDK_VALUE = {"name": "sentry-kubernetes", "version": "1.0.0"}
 # mapping from k8s event types to event levels
 LEVEL_MAPPING = {"normal": "info"}
 
-LOG_LEVEL = os.environ.get("LOG_LEVEL", "error")
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "info")
 DSN = os.environ.get("DSN")
 ENV = os.environ.get("ENVIRONMENT")
 RELEASE = os.environ.get("RELEASE")
 CLUSTER_NAME = os.environ.get("CLUSTER_NAME")
-
+KUBE_CONFIG  = os.environ.get("KUBE_CONFIG")
 
 def _listify_env(name, default=None):
     value = os.getenv(name) or ""
@@ -57,10 +57,10 @@ def main():
     logging.basicConfig(format="%(asctime)s %(message)s", level=log_level)
     logging.debug("log_level: %s" % log_level)
 
-    try:
-        config.load_incluster_config()
-    except:
-        config.load_kube_config()
+    if KUBE_CONFIG:
+        config.load_kube_config(KUBE_CONFIG)
+    else:
+        config.load_incluster_config()        
 
     while True:
         try:
