@@ -46,6 +46,7 @@ DEPRECATED_EVENT_NAMESPACE = (
     [os.getenv("EVENT_NAMESPACE")] if os.getenv("EVENT_NAMESPACE") else None
 )
 EVENT_NAMESPACES = _listify_env("EVENT_NAMESPACES", DEPRECATED_EVENT_NAMESPACE)
+EVENT_NAMESPACES_EXCLUDED = _listify_env("EVENT_NAMESPACES_EXCLUDED")
 
 
 def main():
@@ -140,6 +141,9 @@ def watch_loop():
             namespace = meta["namespace"]
 
         if namespace and EVENT_NAMESPACES and namespace not in EVENT_NAMESPACES:
+            continue
+
+        if namespace and EVENT_NAMESPACES_EXCLUDED and namespace in EVENT_NAMESPACES_EXCLUDED:
             continue
 
         if event.involved_object and event.involved_object.kind:
