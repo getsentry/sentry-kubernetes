@@ -15,6 +15,12 @@ See the full list in sentry-kubernetes.py
 
 | ENV var | Description |
 ---------|-------------
+LOG_LEVEL | The root log level, defaults to 'error'.
+DSN | Data source name for sentry project.
+ENVIRONMENT | [Environment](https://docs.sentry.io/enriching-error-data/environments/) for sentry project.
+RELEASE | [Release](https://docs.sentry.io/workflow/releases/) for sentry project.
+CLUSTER_NAME | Included as an event tag for searching.
+DISABLE_SSL_VERIFY | Set to turn off `verify_ssl` of k8s python client, defaults to False. 
 EVENT_NAMESPACES_EXCLUDED | A comma-separated list of namespaces. Ex.: 'qa,demo'. Events from these namespaces won't be sent to Sentry.
 
 ---

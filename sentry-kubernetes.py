@@ -21,6 +21,7 @@ DSN = os.environ.get("DSN")
 ENV = os.environ.get("ENVIRONMENT")
 RELEASE = os.environ.get("RELEASE")
 CLUSTER_NAME = os.environ.get("CLUSTER_NAME")
+DISABLE_SSL_VERIFY = os.environ.get("DISABLE_SSL_VERIFY")
 
 
 def _listify_env(name, default=None):
@@ -57,6 +58,11 @@ def main():
     log_level = args.log_level.upper()
     logging.basicConfig(format="%(asctime)s %(message)s", level=log_level)
     logging.debug("log_level: %s" % log_level)
+
+    if DISABLE_SSL_VERIFY:
+        configuration = client.Configuration()
+        configuration.verify_ssl=False
+        client.Configuration.set_default(configuration)
 
     try:
         config.load_incluster_config()
