@@ -1,6 +1,13 @@
 sentry-kubernetes
 =================
 
+**Disclaimer: this project is not officially maintained by Sentry.**
+
+The code is under the `getsentry` GitHub organization because it was created by a former employee.  
+For more information see [issue #42](https://github.com/getsentry/sentry-kubernetes/issues/42).
+
+---
+
 Errors and warnings in Kubernetes often go unnoticed by operators. Even when they are checked they are hard to read and understand in the context of what else is going on in the cluster. `sentry-kubernetes` is a small container you launch inside your Kubernetes cluster that will send errors and warnings to Sentry where they will be cleanly presented and intelligently grouped. Typical Sentry features such as notifications can then be used to help operation and developer visibility.
 
 Create a new project on [Sentry](http://sentry.io/) and use your DSN when launching the `sentry-kubernetes` container:
