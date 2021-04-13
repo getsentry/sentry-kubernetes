@@ -45,8 +45,8 @@ And include all of the extra data attached to the event:
 ## Install using helm charts
 
 ```console
-$ helm repo add incubator https://kubernetes-charts-incubator.storage.googleapis.com/
-"incubator" has been added to your repositories
+$ helm repo add sentry https://sentry-kubernetes.github.io/charts
+"sentry" has been added to your repositories
 
-$ helm install incubator/sentry-kubernetes --name my-release --set sentry.dsn=<your-dsn>
+$ helm install sentry/sentry-kubernetes --name my-release --set sentry.dsn=<your-dsn>
 ```
