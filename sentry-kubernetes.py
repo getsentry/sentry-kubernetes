@@ -1,7 +1,7 @@
+import sentry_sdk
 from kubernetes import client, config, watch
 from kubernetes.client.rest import ApiException
 from raven import breadcrumbs
-from raven import Client as SentryClient
 from raven.transport.threaded_requests import ThreadedRequestsHTTPTransport
 from urllib3.exceptions import ProtocolError
 
@@ -84,17 +84,14 @@ def watch_loop():
     w = watch.Watch()
 
     logging.info("Initializing Sentry client")
-    sentry = SentryClient(
+
+    sentry_sdk.init(
         dsn=DSN,
-        install_sys_hook=False,
-        install_logging_hook=False,
-        include_versions=False,
-        capture_locals=False,
-        context={},
         environment=ENV,
         release=RELEASE,
-        transport=ThreadedRequestsHTTPTransport,
+        # transport=ThreadedRequestsHTTPTransport,
     )
+    sentry_sdk.set_level(LOG_LEVEL)
 
     # try:
     #     resource_version = v1.list_event_for_all_namespaces().items[-1].metadata.resource_version
@@ -202,21 +199,19 @@ def watch_loop():
 
             data = {
                 "sdk": SDK_VALUE,
-                "server_name": source_host or "n/a",
-                "culprit": "%s %s" % (obj_name, reason),
             }
 
             logging.debug("Sending event to Sentry:\n{}".format(data))
 
-            sentry.captureMessage(
+            sentry_sdk.capture_message(
                 message,
-                # culprit=culprit,
-                data=data,
-                date=creation_timestamp,
-                extra=meta,
+                contexts=data,
+                extras=meta,
                 fingerprint=fingerprint,
                 level=level,
                 tags=tags,
+                # date=creation_timestamp,
+                # culprit=culprit,
             )
 
         data = {}
