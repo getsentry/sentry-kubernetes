@@ -1,4 +1,4 @@
-PyJWT==1.7.1
+PyJWT==2.4.0
 PyYAML==5.1
 adal==1.2.1
 asn1crypto==0.24.0
