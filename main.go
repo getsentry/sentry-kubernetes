@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/getsentry/sentry-go"
 	"github.com/rs/zerolog/log"
 )
@@ -8,7 +10,7 @@ import (
 func BeforeSend(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
 	// Update SDK info
 	event.Sdk.Name = "tonyo.sentry-kubernetes"
-	event.Sdk.Version = "FIXME"
+	event.Sdk.Version = version
 
 	// Clear modules/packages
 	event.Modules = map[string]string{}
@@ -19,10 +21,9 @@ func BeforeSend(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
 func initSentrySDK() {
 	// Using SENTRY_DSN here
 	err := sentry.Init(sentry.ClientOptions{
-		// Enable printing of SDK debug messages.
-		// Useful when getting started or trying to figure something out.
 		Debug:            true,
 		TracesSampleRate: 0.0,
+		EnableTracing:    false,
 		BeforeSend:       BeforeSend,
 	})
 	if err != nil {
@@ -34,4 +35,7 @@ func initSentrySDK() {
 func main() {
 	initSentrySDK()
 	log.Info().Msg("Done.")
+
+	sentry.CaptureMessage("It works!")
+	defer sentry.Flush(time.Second)
 }

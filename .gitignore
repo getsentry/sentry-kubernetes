@@ -20,4 +20,12 @@
 # Go workspace file
 go.work
 
+# Binaries
 sentry-kubernetes
+
+# Env files
+.env
+
+# virtualenv files
+.venv
+venv
