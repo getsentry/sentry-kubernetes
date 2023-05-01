@@ -17,7 +17,7 @@ FROM build-stage AS test-stage
 RUN go test -v ./...
 
 # Use a slim container
-FROM gcr.io/distroless/base-debian11 AS build-slim-stage
+FROM gcr.io/distroless/static-debian11 AS build-slim-stage
 
 USER nonroot:nonroot
 
