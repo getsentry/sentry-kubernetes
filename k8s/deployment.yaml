@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: sentry-kubernetes
+  name: sentry-kubernetes
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sentry-kubernetes
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: sentry-kubernetes
+    spec:
+      containers:
+        - image: sentry-kubernetes
+          name: sentry-kubernetes
+          resources: {}
+          imagePullPolicy: Never
+      serviceAccount: watch-events
+status: {}
