@@ -2,14 +2,19 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/rs/zerolog/log"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/homedir"
 )
 
 func beforeSend(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
@@ -26,10 +31,9 @@ func beforeSend(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
 func initSentrySDK() {
 	log.Debug().Msg("Initializing Sentry SDK")
 	err := sentry.Init(sentry.ClientOptions{
-		Debug:            true,
-		TracesSampleRate: 0.0,
-		EnableTracing:    false,
-		BeforeSend:       beforeSend,
+		Debug:         true,
+		EnableTracing: false,
+		BeforeSend:    beforeSend,
 	})
 	if err != nil {
 		log.Fatal().Msgf("sentry.Init: %s", err)
@@ -37,12 +41,7 @@ func initSentrySDK() {
 	log.Debug().Msg("Sentry SDK initialized")
 }
 
-func watchEvents() (err error) {
-	log.Debug().Msg("Initializing cluster config...")
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return err
-	}
+func watchEventsInNamespace(config *rest.Config, namespace string) (err error) {
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return err
@@ -58,7 +57,10 @@ func watchEvents() (err error) {
 
 	// Set "" to get events from all namespaces.
 	// TODO: how to watch only for specific ones?
-	watcher, err := clientset.CoreV1().Events("default").Watch(ctx, opts)
+	watcher, err := clientset.CoreV1().Events(namespace).Watch(ctx, opts)
+
+	// FIXME: Watch() currently returns also all recent events.
+	// Should we ignore events that happened in the past?
 
 	if err != nil {
 		return err
@@ -69,19 +71,76 @@ func watchEvents() (err error) {
 
 	log.Debug().Msg("Reading from the event channel...")
 	for event := range watchCh {
-		fmt.Println(event)
+		eventObjectRaw := event.Object
+		eventType := string(event.Type)
+		objectKind := eventObjectRaw.GetObjectKind()
+
+		eventObject, ok := eventObjectRaw.(*v1.Event)
+		if !ok {
+			log.Warn().Msgf("Skipping an event of eventType '%s', kind '%v'", eventType, objectKind)
+			continue
+		}
+		// log.Info().Str("type", eventType).Msgf("%#v", eventObject)
+
+		if eventObject.Type == v1.EventTypeNormal {
+			log.Debug().Msgf("Skipping an event of type Normal")
+			continue
+		}
+
+		fmt.Printf("Kind: %#v\n", objectKind)
+		fmt.Printf("EventObject: %#v\n", eventObject)
+		fmt.Printf("Event type: %#v\n", eventObject.Type)
+
+		fmt.Println()
 	}
 
 	return nil
 }
 
+func getConfig(useInClusterConfig bool) (*rest.Config, error) {
+	var config *rest.Config
+	var err error
+
+	if useInClusterConfig {
+		log.Debug().Msg("Initializing in-cluster config...")
+
+		config, err = rest.InClusterConfig()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		log.Debug().Msg("Initializing out-of-cluster config...")
+
+		var kubeconfig *string
+		if home := homedir.HomeDir(); home != "" {
+			kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+		} else {
+			kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
+		}
+		flag.Parse()
+
+		// use the current context in kubeconfig
+		config, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return config, nil
+}
+
 func main() {
 	initSentrySDK()
-
-	sentry.CaptureMessage("It works!")
 	defer sentry.Flush(time.Second)
 
-	err := watchEvents()
+	useInClusterConfig := false
+	namespace := "default"
+
+	config, err := getConfig(useInClusterConfig)
+	if err != nil {
+		log.Fatal().Msgf("Config init error:", err)
+	}
+
+	err = watchEventsInNamespace(config, namespace)
 	if err != nil {
 		fmt.Println("Error:", err)
 	}
