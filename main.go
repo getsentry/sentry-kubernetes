@@ -150,7 +150,7 @@ func getConfig(useInClusterConfig bool) (*rest.Config, error) {
 			// FIXME: make this configurable
 			kubeconfig = filepath.Join(home, ".kube", "config")
 		} else {
-			log.Fatal().Msg("Cannot find the default kubeconfig")
+			return nil, fmt.Errorf("Cannot find the default kubeconfig")
 		}
 
 		log.Debug().Msgf("Kubeconfig path: %s", kubeconfig)
@@ -173,11 +173,11 @@ func main() {
 
 	config, err := getConfig(useInClusterConfig)
 	if err != nil {
-		log.Fatal().Msgf("Config init error:", err)
+		log.Fatal().Msgf("Config init error: %s", err)
 	}
 
 	err = watchEventsInNamespace(config, namespace)
 	if err != nil {
-		fmt.Println("Error:", err)
+		log.Fatal().Msgf("Watch error: %s", err)
 	}
 }
