@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/getsentry/sentry-go v0.20.0
 	github.com/rs/zerolog v1.29.1
+	k8s.io/api v0.22.17
 	k8s.io/apimachinery v0.22.17
 	k8s.io/client-go v0.22.17
 )
@@ -35,7 +36,6 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/api v0.22.17 // indirect
 	k8s.io/klog/v2 v2.9.0 // indirect
 	k8s.io/utils v0.0.0-20211116205334-6203023598ed // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"path/filepath"
 	"time"
@@ -146,16 +145,16 @@ func getConfig(useInClusterConfig bool) (*rest.Config, error) {
 	} else {
 		log.Debug().Msg("Initializing out-of-cluster config...")
 
-		var kubeconfig *string
+		var kubeconfig string
 		if home := homedir.HomeDir(); home != "" {
-			kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+			// FIXME: make this configurable
+			kubeconfig = filepath.Join(home, ".kube", "config")
 		} else {
-			kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
+			log.Fatal().Msg("Cannot find the default kubeconfig")
 		}
-		flag.Parse()
 
-		// use the current context in kubeconfig
-		config, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
+		log.Debug().Msgf("Kubeconfig path: %s", kubeconfig)
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
 		if err != nil {
 			return nil, err
 		}
@@ -167,7 +166,9 @@ func main() {
 	initSentrySDK()
 	defer sentry.Flush(time.Second)
 
+	// FIXME: make this configurable
 	useInClusterConfig := false
+	// FIXME: make this configurable
 	namespace := "default"
 
 	config, err := getConfig(useInClusterConfig)
