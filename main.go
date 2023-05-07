@@ -11,6 +11,8 @@ import (
 	"github.com/rs/zerolog/log"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	jsonserializer "k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -90,8 +92,41 @@ func watchEventsInNamespace(config *rest.Config, namespace string) (err error) {
 		fmt.Printf("Kind: %#v\n", objectKind)
 		fmt.Printf("EventObject: %#v\n", eventObject)
 		fmt.Printf("Event type: %#v\n", eventObject.Type)
-
 		fmt.Println()
+
+		involvedObject := eventObject.InvolvedObject
+
+		sentry.WithScope(func(scope *sentry.Scope) {
+			// TODO: use SetTags
+			scope.SetTag("eventType", eventObject.Type)
+			scope.SetTag("objectName", involvedObject.Name)
+			scope.SetTag("objectNamespace", involvedObject.Namespace)
+			scope.SetTag("objectKind", involvedObject.Kind)
+			scope.SetTag("objectUID", string(involvedObject.UID))
+
+			encoder := jsonserializer.NewSerializerWithOptions(
+				nil, // jsonserializer.MetaFactory
+				nil, // runtime.ObjectCreater
+				nil, // runtime.ObjectTyper
+				jsonserializer.SerializerOptions{
+					Yaml:   false,
+					Pretty: true,
+					Strict: false,
+				},
+			)
+
+			// Runtime.Encode() is just a helper function to invoke Encoder.Encode()
+			encodedEvent, err := runtime.Encode(encoder, eventObject)
+			if err != nil {
+				log.Error().Msgf("Error while serializing event: %s", err.Error())
+			}
+			scope.SetExtra("kubeEvent", string(encodedEvent))
+			fmt.Println(string(encodedEvent))
+
+			sentryEvent := sentry.Event{Message: eventObject.Message, Level: sentry.LevelError}
+			sentry.CaptureEvent(&sentryEvent)
+		})
+
 	}
 
 	return nil
