@@ -52,7 +52,13 @@ func watchEvents() (err error) {
 		Watch: true,
 	}
 	log.Debug().Msg("Getting the event watcher...")
-	watcher, err := clientset.CoreV1().Events("default").Watch(context.Background(), opts)
+
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
+
+	// Set "" to get events from all namespaces.
+	// TODO: how to watch only for specific ones?
+	watcher, err := clientset.CoreV1().Events("default").Watch(ctx, opts)
 
 	if err != nil {
 		return err
