@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -9,11 +10,57 @@ import (
 	"github.com/rs/zerolog/log"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	jsonserializer "k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
+
+func prettyJson(v any) ([]byte, error) {
+	return json.MarshalIndent(v, "", "  ")
+}
+
+func handleEvent(eventObject *v1.Event) {
+	fmt.Printf("EventObject: %#v\n", eventObject)
+	fmt.Printf("Event type: %#v\n", eventObject.Type)
+	fmt.Println()
+
+	involvedObject := eventObject.InvolvedObject
+
+	sentry.WithScope(func(scope *sentry.Scope) {
+		// TODO: use SetTags?
+		scope.SetTag("eventType", eventObject.Type)
+		scope.SetTag("reason", eventObject.Reason)
+		scope.SetTag("namespace", involvedObject.Namespace)
+		scope.SetTag("kind", involvedObject.Kind)
+		scope.SetTag("object_UID", string(involvedObject.UID))
+
+		name_tag := "object_name"
+		if involvedObject.Kind == "Pod" {
+			name_tag = "pod_name"
+		}
+		scope.SetTag(name_tag, involvedObject.Name)
+
+		if source, err := prettyJson(eventObject.Source); err == nil {
+			scope.SetExtra("source", string(source))
+		}
+
+		if involvedObject, err := prettyJson(eventObject.InvolvedObject); err == nil {
+			scope.SetExtra("involvedObject", string(involvedObject))
+		}
+
+		if metadata, err := prettyJson(eventObject.ObjectMeta); err == nil {
+			scope.SetExtra("metadata", string(metadata))
+		}
+
+		// The entire event
+		if kubeEvent, err := prettyJson(eventObject); err == nil {
+			scope.SetExtra("kubeEvent", string(kubeEvent))
+		}
+
+		sentryEvent := &sentry.Event{Message: eventObject.Message, Level: sentry.LevelError}
+		sentry.CaptureEvent(sentryEvent)
+	})
+
+}
 
 func watchEventsInNamespace(config *rest.Config, namespace string) (err error) {
 	clientset, err := kubernetes.NewForConfig(config)
@@ -31,11 +78,9 @@ func watchEventsInNamespace(config *rest.Config, namespace string) (err error) {
 
 	// Set "" to get events from all namespaces.
 	// TODO: how to watch only for specific ones?
-	watcher, err := clientset.CoreV1().Events(namespace).Watch(ctx, opts)
-
 	// FIXME: Watch() currently returns also all recent events.
 	// Should we ignore events that happened in the past?
-
+	watcher, err := clientset.CoreV1().Events(namespace).Watch(ctx, opts)
 	if err != nil {
 		return err
 	}
@@ -46,12 +91,14 @@ func watchEventsInNamespace(config *rest.Config, namespace string) (err error) {
 	log.Debug().Msg("Reading from the event channel...")
 	for event := range watchCh {
 		eventObjectRaw := event.Object
-		eventType := string(event.Type)
+		// Watch event type: Added, Delete, Bookmark...
+		watchEventType := string(event.Type)
+
 		objectKind := eventObjectRaw.GetObjectKind()
 
 		eventObject, ok := eventObjectRaw.(*v1.Event)
 		if !ok {
-			log.Warn().Msgf("Skipping an event of eventType '%s', kind '%v'", eventType, objectKind)
+			log.Warn().Msgf("Skipping an event of eventType '%s', kind '%v'", watchEventType, objectKind)
 			continue
 		}
 		// log.Info().Str("type", eventType).Msgf("%#v", eventObject)
@@ -60,45 +107,7 @@ func watchEventsInNamespace(config *rest.Config, namespace string) (err error) {
 			log.Debug().Msgf("Skipping an event of type Normal")
 			continue
 		}
-
-		fmt.Printf("Kind: %#v\n", objectKind)
-		fmt.Printf("EventObject: %#v\n", eventObject)
-		fmt.Printf("Event type: %#v\n", eventObject.Type)
-		fmt.Println()
-
-		involvedObject := eventObject.InvolvedObject
-
-		sentry.WithScope(func(scope *sentry.Scope) {
-			// TODO: use SetTags
-			scope.SetTag("eventType", eventObject.Type)
-			scope.SetTag("objectName", involvedObject.Name)
-			scope.SetTag("objectNamespace", involvedObject.Namespace)
-			scope.SetTag("objectKind", involvedObject.Kind)
-			scope.SetTag("objectUID", string(involvedObject.UID))
-
-			encoder := jsonserializer.NewSerializerWithOptions(
-				nil, // jsonserializer.MetaFactory
-				nil, // runtime.ObjectCreater
-				nil, // runtime.ObjectTyper
-				jsonserializer.SerializerOptions{
-					Yaml:   false,
-					Pretty: true,
-					Strict: false,
-				},
-			)
-
-			// Runtime.Encode() is just a helper function to invoke Encoder.Encode()
-			encodedEvent, err := runtime.Encode(encoder, eventObject)
-			if err != nil {
-				log.Error().Msgf("Error while serializing event: %s", err.Error())
-			}
-			scope.SetExtra("kubeEvent", string(encodedEvent))
-			fmt.Println(string(encodedEvent))
-
-			sentryEvent := sentry.Event{Message: eventObject.Message, Level: sentry.LevelError}
-			sentry.CaptureEvent(&sentryEvent)
-		})
-
+		handleEvent(eventObject)
 	}
 
 	return nil

@@ -22,6 +22,8 @@ func initSentrySDK() {
 		Debug:         true,
 		EnableTracing: false,
 		BeforeSend:    beforeSend,
+		// Clear integration list
+		Integrations: func([]sentry.Integration) []sentry.Integration { return []sentry.Integration{} },
 	})
 	if err != nil {
 		log.Fatal().Msgf("sentry.Init: %s", err)
