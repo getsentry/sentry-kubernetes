@@ -27,7 +27,7 @@ func handleEvent(eventObject *v1.Event) {
 
 	sentry.WithScope(func(scope *sentry.Scope) {
 		// TODO: use SetTags?
-		scope.SetTag("eventType", eventObject.Type)
+		scope.SetTag("event_type", eventObject.Type)
 		scope.SetTag("reason", eventObject.Reason)
 		scope.SetTag("namespace", involvedObject.Namespace)
 		scope.SetTag("kind", involvedObject.Kind)

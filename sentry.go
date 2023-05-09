@@ -13,6 +13,10 @@ func beforeSend(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
 	// Clear modules/packages
 	event.Modules = map[string]string{}
 
+	// We don't need these for now
+	event.Release = ""
+	event.ServerName = ""
+
 	return event
 }
 
