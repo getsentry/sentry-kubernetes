@@ -4,12 +4,12 @@ metadata:
   creationTimestamp: null
   labels:
     run: pod-invalid-image
+    type: test-pod
   name: pod-invalid-image
 spec:
   containers:
-  - image: image-doesnot-exist:random-tag-bla
-    name: pod-invalid-image
-    resources: {}
+    - image: image-doesnot-exist:random-tag-bla
+      name: pod-invalid-image
+      resources: {}
   dnsPolicy: ClusterFirst
   restartPolicy: Always
-status: {}
