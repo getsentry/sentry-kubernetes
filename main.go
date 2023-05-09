@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -14,8 +13,6 @@ import (
 	jsonserializer "k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
 )
 
 func beforeSend(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
@@ -131,37 +128,6 @@ func watchEventsInNamespace(config *rest.Config, namespace string) (err error) {
 	return nil
 }
 
-func getConfig(useInClusterConfig bool) (*rest.Config, error) {
-	var config *rest.Config
-	var err error
-
-	if useInClusterConfig {
-		log.Debug().Msg("Initializing in-cluster config...")
-
-		config, err = rest.InClusterConfig()
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		log.Debug().Msg("Initializing out-of-cluster config...")
-
-		var kubeconfig string
-		if home := homedir.HomeDir(); home != "" {
-			// FIXME: make this configurable
-			kubeconfig = filepath.Join(home, ".kube", "config")
-		} else {
-			return nil, fmt.Errorf("Cannot find the default kubeconfig")
-		}
-
-		log.Debug().Msgf("Kubeconfig path: %s", kubeconfig)
-		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return config, nil
-}
-
 func main() {
 	initSentrySDK()
 	defer sentry.Flush(time.Second)
@@ -171,7 +137,7 @@ func main() {
 	// FIXME: make this configurable
 	namespace := "default"
 
-	config, err := getConfig(useInClusterConfig)
+	config, err := getClusterConfig(useInClusterConfig)
 	if err != nil {
 		log.Fatal().Msgf("Config init error: %s", err)
 	}
