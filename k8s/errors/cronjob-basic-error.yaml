@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cronjob-basic-error
+  labels:
+    type: test-pod
+spec:
+  schedule: "* * * * *"
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            type: test-pod
+            run: cronjob-basic-error
+        spec:
+          containers:
+            - name: hello
+              image: busybox:1.28
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  sleep 1
+                  invalid_command
+          restartPolicy: Never
