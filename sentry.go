@@ -21,7 +21,7 @@ func beforeSend(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
 }
 
 func initSentrySDK() {
-	log.Debug().Msg("Initializing Sentry SDK")
+	log.Debug().Msg("Initializing Sentry SDK...")
 	err := sentry.Init(sentry.ClientOptions{
 		Debug:         true,
 		EnableTracing: false,

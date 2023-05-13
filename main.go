@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -15,14 +14,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
-
-func prettyJson(obj any) (string, error) {
-	bytes, err := json.MarshalIndent(obj, "", "  ")
-	if err != nil {
-		return "", err
-	}
-	return string(bytes), nil
-}
 
 func handleEvent(eventObject *v1.Event) {
 	fmt.Printf("EventObject: %#v\n", eventObject)
@@ -156,11 +147,9 @@ func main() {
 	defer sentry.Flush(time.Second)
 
 	// FIXME: make this configurable
-	useInClusterConfig := false
-	// FIXME: make this configurable
 	namespace := "default"
 
-	config, err := getClusterConfig(useInClusterConfig)
+	config, err := getClusterConfig()
 	if err != nil {
 		log.Fatal().Msgf("Config init error: %s", err)
 	}

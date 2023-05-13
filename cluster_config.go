@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 	"k8s.io/client-go/rest"
@@ -10,26 +12,55 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-func getClusterConfig(useInClusterConfig bool) (*rest.Config, error) {
+const typeInCluster = "in-cluster"
+const typeOutCluster = "out-cluster"
+
+func getClusterConfig() (*rest.Config, error) {
 	var config *rest.Config
 	var err error
 
-	if useInClusterConfig {
+	configType := strings.ToLower(os.Getenv("SENTRY_K8S_CLUSTER_CONFIG_TYPE"))
+
+	if configType != "" &&
+		configType != typeInCluster &&
+		configType != typeOutCluster {
+		log.Fatal().Msgf(
+			"Infalid cluster configuration type provided in SENTRY_K8S_CLUSTER_CONFIG_TYPE: %s",
+			configType,
+		)
+	}
+
+	autoConfig := configType == ""
+	if autoConfig {
+		log.Info().Msg("Auto-detecting cluster configuration...")
+	}
+
+	if autoConfig || configType == typeInCluster {
 		log.Debug().Msg("Initializing in-cluster config...")
 
 		config, err = rest.InClusterConfig()
 		if err != nil {
-			return nil, err
+			if autoConfig {
+				log.Warn().Msgf("Could not initialize in-cluster config")
+			} else {
+				return nil, err
+			}
 		}
-	} else {
+	}
+
+	if autoConfig || configType == typeOutCluster {
 		log.Debug().Msg("Initializing out-of-cluster config...")
 
-		var kubeconfig string
-		if home := homedir.HomeDir(); home != "" {
-			// FIXME: make this configurable
-			kubeconfig = filepath.Join(home, ".kube", "config")
-		} else {
-			return nil, fmt.Errorf("Cannot find the default kubeconfig")
+		kubeconfig := os.Getenv("SENTRY_K8S_KUBECONFIG_PATH")
+
+		if kubeconfig == "" {
+			log.Debug().Msg("Trying to read kubeconfig from home directory...")
+
+			if home := homedir.HomeDir(); home != "" {
+				kubeconfig = filepath.Join(home, ".kube", "config")
+			} else {
+				return nil, fmt.Errorf("cannot find the default kubeconfig")
+			}
 		}
 
 		log.Debug().Msgf("Kubeconfig path: %s", kubeconfig)
@@ -38,5 +69,10 @@ func getClusterConfig(useInClusterConfig bool) (*rest.Config, error) {
 			return nil, err
 		}
 	}
+
+	if config == nil {
+		return nil, fmt.Errorf("cannot initialize cluster config")
+	}
+
 	return config, nil
 }
