@@ -10,12 +10,18 @@ import (
 	"github.com/rs/zerolog/log"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sVersion "k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
 
-func prettyJson(v any) ([]byte, error) {
-	return json.MarshalIndent(v, "", "  ")
+func prettyJson(obj any) (string, error) {
+	bytes, err := json.MarshalIndent(obj, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
 }
 
 func handleEvent(eventObject *v1.Event) {
@@ -26,7 +32,6 @@ func handleEvent(eventObject *v1.Event) {
 	involvedObject := eventObject.InvolvedObject
 
 	sentry.WithScope(func(scope *sentry.Scope) {
-		// TODO: use SetTags?
 		scope.SetTag("event_type", eventObject.Type)
 		scope.SetTag("reason", eventObject.Reason)
 		scope.SetTag("namespace", involvedObject.Namespace)
@@ -40,20 +45,25 @@ func handleEvent(eventObject *v1.Event) {
 		scope.SetTag(name_tag, involvedObject.Name)
 
 		if source, err := prettyJson(eventObject.Source); err == nil {
-			scope.SetExtra("source", string(source))
+			scope.SetExtra("Event Source", source)
 		}
+		eventObject.Source = v1.EventSource{}
 
 		if involvedObject, err := prettyJson(eventObject.InvolvedObject); err == nil {
-			scope.SetExtra("involvedObject", string(involvedObject))
+			scope.SetExtra("Involved Object", involvedObject)
 		}
+		eventObject.InvolvedObject = v1.ObjectReference{}
 
+		// clean-up the event a bit
+		eventObject.ObjectMeta.ManagedFields = []metav1.ManagedFieldsEntry{}
 		if metadata, err := prettyJson(eventObject.ObjectMeta); err == nil {
-			scope.SetExtra("metadata", string(metadata))
+			scope.SetExtra("Event Metadata", metadata)
 		}
+		eventObject.ObjectMeta = metav1.ObjectMeta{}
 
 		// The entire event
 		if kubeEvent, err := prettyJson(eventObject); err == nil {
-			scope.SetExtra("kubeEvent", string(kubeEvent))
+			scope.SetExtra("~ Misc Event Fields", kubeEvent)
 		}
 
 		sentryEvent := &sentry.Event{Message: eventObject.Message, Level: sentry.LevelError}
@@ -113,6 +123,34 @@ func watchEventsInNamespace(config *rest.Config, namespace string) (err error) {
 	return nil
 }
 
+func getClusterVersion(config *rest.Config) (*k8sVersion.Info, error) {
+	versionInfo := &k8sVersion.Info{}
+
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
+	if err != nil {
+		return versionInfo, err
+	}
+	log.Debug().Msgf("Fetching cluster version...")
+	versionInfo, err = discoveryClient.ServerVersion()
+	log.Debug().Msgf("Cluster version: %s", versionInfo)
+	return versionInfo, err
+}
+
+func setKubernetesSentryContext(config *rest.Config) {
+	clusterVersion, err := getClusterVersion(config)
+	if err != nil {
+		log.Error().Msgf("Error while getting cluster version: %s", err)
+		return
+	}
+
+	sentry.CurrentHub().Scope().SetContext(
+		"Kubernetes",
+		map[string]interface{}{
+			"Server version": clusterVersion.String(),
+		},
+	)
+}
+
 func main() {
 	initSentrySDK()
 	defer sentry.Flush(time.Second)
@@ -126,6 +164,8 @@ func main() {
 	if err != nil {
 		log.Fatal().Msgf("Config init error: %s", err)
 	}
+
+	setKubernetesSentryContext(config)
 
 	err = watchEventsInNamespace(config, namespace)
 	if err != nil {
