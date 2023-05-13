@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -14,6 +15,14 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
+
+func getObjectNameTag(object *v1.ObjectReference) string {
+	if object.Kind == "" {
+		return "object_name"
+	} else {
+		return fmt.Sprintf("%s_name", strings.ToLower(object.Kind))
+	}
+}
 
 func handleEvent(eventObject *v1.Event) {
 	fmt.Printf("EventObject: %#v\n", eventObject)
@@ -29,10 +38,7 @@ func handleEvent(eventObject *v1.Event) {
 		scope.SetTag("kind", involvedObject.Kind)
 		scope.SetTag("object_UID", string(involvedObject.UID))
 
-		name_tag := "object_name"
-		if involvedObject.Kind == "Pod" {
-			name_tag = "pod_name"
-		}
+		name_tag := getObjectNameTag(&involvedObject)
 		scope.SetTag(name_tag, involvedObject.Name)
 
 		if source, err := prettyJson(eventObject.Source); err == nil {
