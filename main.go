@@ -3,13 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/getsentry/sentry-go"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
@@ -24,14 +27,13 @@ func getObjectNameTag(object *v1.ObjectReference) string {
 	}
 }
 
-func handleEvent(eventObject *v1.Event) {
-	fmt.Printf("EventObject: %#v\n", eventObject)
-	fmt.Printf("Event type: %#v\n", eventObject.Type)
-	fmt.Println()
+func handleEvent(eventObject *v1.Event, hub *sentry.Hub) {
+	log.Debug().Msgf("EventObject: %#v", eventObject)
+	log.Debug().Msgf("Event type: %#v", eventObject.Type)
 
 	involvedObject := eventObject.InvolvedObject
 
-	sentry.WithScope(func(scope *sentry.Scope) {
+	hub.WithScope(func(scope *sentry.Scope) {
 		scope.SetTag("event_type", eventObject.Type)
 		scope.SetTag("reason", eventObject.Reason)
 		scope.SetTag("namespace", involvedObject.Namespace)
@@ -64,12 +66,12 @@ func handleEvent(eventObject *v1.Event) {
 		}
 
 		sentryEvent := &sentry.Event{Message: eventObject.Message, Level: sentry.LevelError}
-		sentry.CaptureEvent(sentryEvent)
+		hub.CaptureEvent(sentryEvent)
 	})
 
 }
 
-func watchEventsInNamespace(config *rest.Config, namespace string) (err error) {
+func watchEventsInNamespace(config *rest.Config, namespace string, hub *sentry.Hub) (err error) {
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return err
@@ -114,10 +116,27 @@ func watchEventsInNamespace(config *rest.Config, namespace string) (err error) {
 			log.Debug().Msgf("Skipping an event of type Normal")
 			continue
 		}
-		handleEvent(eventObject)
+
+		handleEvent(eventObject, hub)
 	}
 
 	return nil
+}
+
+func watchEventsInNamespaceForever(config *rest.Config, namespace string) {
+	localHub := sentry.CurrentHub().Clone()
+
+	where := fmt.Sprintf("in namespace '%s'", namespace)
+	if namespace == "" {
+		where = "in all namespaces"
+	}
+
+	for {
+		if err := watchEventsInNamespace(config, namespace, localHub); err != nil {
+			log.Error().Msgf("Error while watching events %s: %s", where, err)
+		}
+		time.Sleep(time.Second * 5)
+	}
 }
 
 func getClusterVersion(config *rest.Config) (*k8sVersion.Info, error) {
@@ -148,12 +167,44 @@ func setKubernetesSentryContext(config *rest.Config) {
 	)
 }
 
+var defaultNamespacesToWatch = []string{"default"}
+
+const allNamespacesLabel = "__all__"
+
+func getNamespacesToWatch() (watchAll bool, namespaces []string, err error) {
+	watchNamespacesRaw := strings.TrimSpace(os.Getenv("SENTRY_K8S_WATCH_NAMESPACES"))
+
+	// Nothing in the env variable => use the default value
+	if watchNamespacesRaw == "" {
+		return false, defaultNamespacesToWatch, nil
+	}
+
+	// Special label => watch all namespaces
+	if watchNamespacesRaw == allNamespacesLabel {
+		return true, []string{}, nil
+	}
+
+	rawNamespaces := strings.Split(watchNamespacesRaw, ",")
+	namespaces = make([]string, 0, len(rawNamespaces))
+	for _, rawNamespace := range rawNamespaces {
+		namespace := strings.TrimSpace(rawNamespace)
+		errors := validation.IsValidLabelValue(namespace)
+		if len(errors) != 0 {
+			return false, []string{}, fmt.Errorf(errors[0])
+		}
+		namespaces = append(namespaces, namespace)
+	}
+	return false, namespaces, nil
+}
+
+func configureLogging() {
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
+}
+
 func main() {
+	configureLogging()
 	initSentrySDK()
 	defer sentry.Flush(time.Second)
-
-	// FIXME: make this configurable
-	namespace := "default"
 
 	config, err := getClusterConfig()
 	if err != nil {
@@ -162,8 +213,19 @@ func main() {
 
 	setKubernetesSentryContext(config)
 
-	err = watchEventsInNamespace(config, namespace)
+	watchAllNamespaces, namespaces, err := getNamespacesToWatch()
 	if err != nil {
-		log.Fatal().Msgf("Watch error: %s", err)
+		log.Fatal().Msgf("Cannot parse namespaces to watch: %s", err)
 	}
+
+	if watchAllNamespaces {
+		namespaces = []string{""}
+	}
+
+	for _, namespace := range namespaces {
+		go watchEventsInNamespaceForever(config, namespace)
+	}
+
+	// Sleep forever
+	select {}
 }
