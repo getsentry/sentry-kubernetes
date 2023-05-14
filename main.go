@@ -201,6 +201,22 @@ func configureLogging() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 }
 
+func setGlobalSentryTags() {
+	for _, e := range os.Environ() {
+		pair := strings.SplitN(e, "=", 2)
+		if len(pair) != 2 {
+			continue
+		}
+		key, value := strings.TrimSpace(pair[0]), strings.TrimSpace(pair[1])
+		tagPrefix := "SENTRY_K8S_GLOBAL_TAG_"
+		if strings.HasPrefix(key, tagPrefix) {
+			tagKey := strings.TrimPrefix(key, tagPrefix)
+			log.Debug().Msgf("Global tag detected: %s=%s", tagKey, value)
+			sentry.CurrentHub().Scope().SetTag(tagKey, value)
+		}
+	}
+}
+
 func main() {
 	configureLogging()
 	initSentrySDK()
@@ -212,6 +228,7 @@ func main() {
 	}
 
 	setKubernetesSentryContext(config)
+	setGlobalSentryTags()
 
 	watchAllNamespaces, namespaces, err := getNamespacesToWatch()
 	if err != nil {
