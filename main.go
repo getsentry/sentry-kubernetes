@@ -169,7 +169,7 @@ func setKubernetesSentryContext(config *rest.Config) {
 	)
 }
 
-var defaultNamespacesToWatch = []string{"default"}
+var defaultNamespacesToWatch = []string{v1.NamespaceDefault}
 
 const allNamespacesLabel = "__all__"
 
