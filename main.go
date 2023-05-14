@@ -85,8 +85,6 @@ func watchEventsInNamespace(config *rest.Config, namespace string, hub *sentry.H
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	defer cancelFunc()
 
-	// Set "" to get events from all namespaces.
-	// TODO: how to watch only for specific ones?
 	// FIXME: Watch() currently returns also all recent events.
 	// Should we ignore events that happened in the past?
 	watcher, err := clientset.CoreV1().Events(namespace).Watch(ctx, opts)
@@ -127,7 +125,7 @@ func watchEventsInNamespaceForever(config *rest.Config, namespace string) {
 	localHub := sentry.CurrentHub().Clone()
 
 	where := fmt.Sprintf("in namespace '%s'", namespace)
-	if namespace == "" {
+	if namespace == v1.NamespaceAll {
 		where = "in all namespaces"
 	}
 
@@ -192,12 +190,21 @@ func getNamespacesToWatch() (watchAll bool, namespaces []string, err error) {
 	namespaces = make([]string, 0, len(rawNamespaces))
 	for _, rawNamespace := range rawNamespaces {
 		namespace := strings.TrimSpace(rawNamespace)
+		if namespace == "" {
+			continue
+		}
 		errors := validation.IsValidLabelValue(namespace)
 		if len(errors) != 0 {
+			// Not a valid namespace name
 			return false, []string{}, fmt.Errorf(errors[0])
 		}
 		namespaces = append(namespaces, namespace)
 	}
+	namespaces = removeDuplicates(namespaces)
+	if len(namespaces) == 0 {
+		return false, namespaces, fmt.Errorf("no namespaces specified")
+	}
+
 	return false, namespaces, nil
 }
 
@@ -240,7 +247,7 @@ func main() {
 	}
 
 	if watchAllNamespaces {
-		namespaces = []string{""}
+		namespaces = []string{v1.NamespaceAll}
 	}
 
 	for _, namespace := range namespaces {

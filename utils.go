@@ -6,9 +6,9 @@ import (
 )
 
 var truthyStrings map[string]struct{} = map[string]struct{}{
-	"yes":  struct{}{},
-	"true": struct{}{},
-	"1":    struct{}{},
+	"yes":  {},
+	"true": {},
+	"1":    {},
 }
 
 func isTruthy(s string) bool {
@@ -23,4 +23,15 @@ func prettyJson(obj any) (string, error) {
 		return "", err
 	}
 	return string(bytes), nil
+}
+
+func removeDuplicates(slice []string) []string {
+	res := make([]string, 0, len(slice))
+	seen := make(map[string]struct{}, len(slice))
+	for _, s := range slice {
+		if _, found := seen[s]; !found {
+			res = append(res, s)
+		}
+	}
+	return res
 }
