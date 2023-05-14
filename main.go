@@ -153,17 +153,21 @@ func getClusterVersion(config *rest.Config) (*k8sVersion.Info, error) {
 }
 
 func setKubernetesSentryContext(config *rest.Config) {
+	kubernetesContext := map[string]interface{}{
+		"API endpoint": config.Host,
+	}
+
+	// Get cluster version via API
 	clusterVersion, err := getClusterVersion(config)
-	if err != nil {
+	if err == nil {
+		kubernetesContext["Server version"] = clusterVersion.String()
+	} else {
 		log.Error().Msgf("Error while getting cluster version: %s", err)
-		return
 	}
 
 	sentry.CurrentHub().Scope().SetContext(
 		"Kubernetes",
-		map[string]interface{}{
-			"Server version": clusterVersion.String(),
-		},
+		kubernetesContext,
 	)
 }
 
