@@ -12,7 +12,7 @@ var truthyStrings map[string]struct{} = map[string]struct{}{
 }
 
 func isTruthy(s string) bool {
-	s = strings.ToLower(s)
+	s = strings.ToLower(strings.TrimSpace(s))
 	_, found := truthyStrings[s]
 	return found
 }

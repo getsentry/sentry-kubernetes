@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -71,13 +72,12 @@ func handleEvent(eventObject *v1.Event, hub *sentry.Hub) {
 
 }
 
-func watchEventsInNamespace(config *rest.Config, namespace string, hub *sentry.Hub) (err error) {
+func watchEventsInNamespace(config *rest.Config, namespace string, watchSince time.Time, hub *sentry.Hub) (err error) {
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return err
 	}
 	opts := metav1.ListOptions{
-		// FieldSelector: "involvedObject.kind=Pod",
 		Watch: true,
 	}
 	log.Debug().Msg("Getting the event watcher...")
@@ -95,23 +95,37 @@ func watchEventsInNamespace(config *rest.Config, namespace string, hub *sentry.H
 	watchCh := watcher.ResultChan()
 	defer watcher.Stop()
 
+	watchSinceWrapped := metav1.Time{Time: watchSince}
+
 	log.Debug().Msg("Reading from the event channel...")
 	for event := range watchCh {
 		eventObjectRaw := event.Object
 		// Watch event type: Added, Delete, Bookmark...
-		watchEventType := string(event.Type)
-
-		objectKind := eventObjectRaw.GetObjectKind()
-
-		eventObject, ok := eventObjectRaw.(*v1.Event)
-		if !ok {
-			log.Warn().Msgf("Skipping an event of eventType '%s', kind '%v'", watchEventType, objectKind)
+		if (event.Type != watch.Added) && (event.Type != watch.Modified) {
+			log.Debug().Msgf("Skipping a watch event of type %s", event.Type)
 			continue
 		}
-		// log.Info().Str("type", eventType).Msgf("%#v", eventObject)
+
+		objectKind := eventObjectRaw.GetObjectKind()
+		eventObject, ok := eventObjectRaw.(*v1.Event)
+		if !ok {
+			log.Warn().Msgf("Skipping an event of kind '%v' because it cannot be casted", objectKind)
+			continue
+		}
+
+		// Get event timestamp
+		eventTs := eventObject.LastTimestamp
+		if eventTs.IsZero() {
+			eventTs = metav1.Time(eventObject.EventTime)
+		}
+
+		if !watchSinceWrapped.IsZero() && !eventTs.IsZero() && eventTs.Before(&watchSinceWrapped) {
+			log.Debug().Msgf("Ignoring an event because it is too old")
+			continue
+		}
 
 		if eventObject.Type == v1.EventTypeNormal {
-			log.Debug().Msgf("Skipping an event of type Normal")
+			log.Debug().Msgf("Skipping an event of type %s", eventObject.Type)
 			continue
 		}
 
@@ -129,11 +143,22 @@ func watchEventsInNamespaceForever(config *rest.Config, namespace string) {
 		where = "in all namespaces"
 	}
 
+	watchFromBeginning := isTruthy(os.Getenv("SENTRY_K8S_WATCH_HISTORICAL"))
+	var watchSince time.Time
+	if watchFromBeginning {
+		watchSince = time.Time{}
+		log.Info().Msgf("Watching all available events (no starting timestamp)")
+	} else {
+		watchSince = time.Now()
+		log.Info().Msgf("Watching events starting from: %s", watchSince.Format("Mon, 02 Jan 2006 15:04:05 -0700"))
+	}
+
 	for {
-		if err := watchEventsInNamespace(config, namespace, localHub); err != nil {
+		if err := watchEventsInNamespace(config, namespace, watchSince, localHub); err != nil {
 			log.Error().Msgf("Error while watching events %s: %s", where, err)
 		}
-		time.Sleep(time.Second * 5)
+		watchSince = time.Now()
+		time.Sleep(time.Second * 1)
 	}
 }
 
@@ -222,7 +247,7 @@ func setGlobalSentryTags() {
 		tagPrefix := "SENTRY_K8S_GLOBAL_TAG_"
 		if strings.HasPrefix(key, tagPrefix) {
 			tagKey := strings.TrimPrefix(key, tagPrefix)
-			log.Debug().Msgf("Global tag detected: %s=%s", tagKey, value)
+			log.Info().Msgf("Global tag detected: %s=%s", tagKey, value)
 			sentry.CurrentHub().Scope().SetTag(tagKey, value)
 		}
 	}
