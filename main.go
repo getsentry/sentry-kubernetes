@@ -28,10 +28,11 @@ func getObjectNameTag(object *v1.ObjectReference) string {
 	}
 }
 
-func handleEvent(eventObject *v1.Event, hub *sentry.Hub) {
+func handleEvent(clientset *kubernetes.Clientset, eventObject *v1.Event, hub *sentry.Hub) {
 	log.Debug().Msgf("EventObject: %#v", eventObject)
 	log.Debug().Msgf("Event type: %#v", eventObject.Type)
 
+	originalEvent := eventObject.DeepCopy()
 	involvedObject := eventObject.InvolvedObject
 
 	hub.WithScope(func(scope *sentry.Scope) {
@@ -39,7 +40,7 @@ func handleEvent(eventObject *v1.Event, hub *sentry.Hub) {
 		scope.SetTag("reason", eventObject.Reason)
 		scope.SetTag("namespace", involvedObject.Namespace)
 		scope.SetTag("kind", involvedObject.Kind)
-		scope.SetTag("object_UID", string(involvedObject.UID))
+		scope.SetTag("object_uid", string(involvedObject.UID))
 
 		name_tag := getObjectNameTag(&involvedObject)
 		scope.SetTag(name_tag, involvedObject.Name)
@@ -65,6 +66,8 @@ func handleEvent(eventObject *v1.Event, hub *sentry.Hub) {
 		if kubeEvent, err := prettyJson(eventObject); err == nil {
 			scope.SetExtra("~ Misc Event Fields", kubeEvent)
 		}
+
+		runEnhancers(clientset, originalEvent, scope)
 
 		sentryEvent := &sentry.Event{Message: eventObject.Message, Level: sentry.LevelError}
 		hub.CaptureEvent(sentryEvent)
@@ -129,7 +132,7 @@ func watchEventsInNamespace(config *rest.Config, namespace string, watchSince ti
 			continue
 		}
 
-		handleEvent(eventObject, hub)
+		handleEvent(clientset, eventObject, hub)
 	}
 
 	return nil
