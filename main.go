@@ -18,6 +18,8 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
+	toolsWatch "k8s.io/client-go/tools/watch"
 )
 
 func getObjectNameTag(object *v1.ObjectReference) string {
@@ -80,23 +82,24 @@ func watchEventsInNamespace(config *rest.Config, namespace string, watchSince ti
 	if err != nil {
 		return err
 	}
-	opts := metav1.ListOptions{
-		Watch: true,
-	}
-	log.Debug().Msg("Getting the event watcher...")
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	defer cancelFunc()
 
-	// FIXME: Watch() currently returns also all recent events.
-	// Should we ignore events that happened in the past?
-	watcher, err := clientset.CoreV1().Events(namespace).Watch(ctx, opts)
+	watchFunc := func(options metav1.ListOptions) (watch.Interface, error) {
+		opts := metav1.ListOptions{
+			Watch: true,
+		}
+		return clientset.CoreV1().Events(namespace).Watch(ctx, opts)
+	}
+	log.Debug().Msg("Getting the event watcher...")
+	retryWatcher, err := toolsWatch.NewRetryWatcher("1", &cache.ListWatch{WatchFunc: watchFunc})
 	if err != nil {
 		return err
 	}
 
-	watchCh := watcher.ResultChan()
-	defer watcher.Stop()
+	watchCh := retryWatcher.ResultChan()
+	defer retryWatcher.Stop()
 
 	watchSinceWrapped := metav1.Time{Time: watchSince}
 
