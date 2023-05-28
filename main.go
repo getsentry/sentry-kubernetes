@@ -30,7 +30,7 @@ func getObjectNameTag(object *v1.ObjectReference) string {
 	}
 }
 
-func handleEvent(clientset *kubernetes.Clientset, eventObject *v1.Event, hub *sentry.Hub) {
+func processKubernetesEvent(clientset *kubernetes.Clientset, eventObject *v1.Event, hub *sentry.Hub) {
 	log.Debug().Msgf("EventObject: %#v", eventObject)
 	log.Debug().Msgf("Event type: %#v", eventObject.Type)
 
@@ -77,6 +77,40 @@ func handleEvent(clientset *kubernetes.Clientset, eventObject *v1.Event, hub *se
 
 }
 
+func handleWatchEvent(event *watch.Event, clientset *kubernetes.Clientset, hub *sentry.Hub, cutoffTime metav1.Time) {
+	eventObjectRaw := event.Object
+	// Watch event type: Added, Delete, Bookmark...
+	if (event.Type != watch.Added) && (event.Type != watch.Modified) {
+		log.Debug().Msgf("Skipping a watch event of type %s", event.Type)
+		return
+	}
+
+	objectKind := eventObjectRaw.GetObjectKind()
+	eventObject, ok := eventObjectRaw.(*v1.Event)
+	if !ok {
+		log.Warn().Msgf("Skipping an event of kind '%v' because it cannot be casted", objectKind)
+		return
+	}
+
+	// Get event timestamp
+	eventTs := eventObject.LastTimestamp
+	if eventTs.IsZero() {
+		eventTs = metav1.Time(eventObject.EventTime)
+	}
+
+	if !cutoffTime.IsZero() && !eventTs.IsZero() && eventTs.Before(&cutoffTime) {
+		log.Debug().Msgf("Ignoring an event because it is too old")
+		return
+	}
+
+	if eventObject.Type == v1.EventTypeNormal {
+		log.Debug().Msgf("Skipping an event of type %s", eventObject.Type)
+		return
+	}
+
+	processKubernetesEvent(clientset, eventObject, hub)
+}
+
 func watchEventsInNamespace(config *rest.Config, namespace string, watchSince time.Time, hub *sentry.Hub) (err error) {
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
@@ -105,37 +139,7 @@ func watchEventsInNamespace(config *rest.Config, namespace string, watchSince ti
 
 	log.Debug().Msg("Reading from the event channel...")
 	for event := range watchCh {
-		eventObjectRaw := event.Object
-		// Watch event type: Added, Delete, Bookmark...
-		if (event.Type != watch.Added) && (event.Type != watch.Modified) {
-			log.Debug().Msgf("Skipping a watch event of type %s", event.Type)
-			continue
-		}
-
-		objectKind := eventObjectRaw.GetObjectKind()
-		eventObject, ok := eventObjectRaw.(*v1.Event)
-		if !ok {
-			log.Warn().Msgf("Skipping an event of kind '%v' because it cannot be casted", objectKind)
-			continue
-		}
-
-		// Get event timestamp
-		eventTs := eventObject.LastTimestamp
-		if eventTs.IsZero() {
-			eventTs = metav1.Time(eventObject.EventTime)
-		}
-
-		if !watchSinceWrapped.IsZero() && !eventTs.IsZero() && eventTs.Before(&watchSinceWrapped) {
-			log.Debug().Msgf("Ignoring an event because it is too old")
-			continue
-		}
-
-		if eventObject.Type == v1.EventTypeNormal {
-			log.Debug().Msgf("Skipping an event of type %s", eventObject.Type)
-			continue
-		}
-
-		handleEvent(clientset, eventObject, hub)
+		handleWatchEvent(&event, clientset, hub, watchSinceWrapped)
 	}
 
 	return nil
