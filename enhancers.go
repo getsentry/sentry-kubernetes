@@ -7,10 +7,14 @@ import (
 	"github.com/getsentry/sentry-go"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 )
 
-func runPodEnhancer(clientset *kubernetes.Clientset, event *v1.Event, scope *sentry.Scope) error {
+func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope) error {
+	clientset, err := getClientsetFromContext(ctx)
+	if err != nil {
+		return err
+	}
+
 	namespace := event.Namespace
 	podName := event.InvolvedObject.Name
 	opts := metav1.GetOptions{}
@@ -35,10 +39,10 @@ func runPodEnhancer(clientset *kubernetes.Clientset, event *v1.Event, scope *sen
 	return nil
 }
 
-func runEnhancers(clientset *kubernetes.Clientset, event *v1.Event, scope *sentry.Scope) {
+func runEnhancers(ctx context.Context, event *v1.Event, scope *sentry.Scope) {
 	fmt.Println("Running enhancers...")
 	switch event.InvolvedObject.Kind {
 	case "Pod":
-		runPodEnhancer(clientset, event, scope)
+		runPodEnhancer(ctx, event, scope)
 	}
 }

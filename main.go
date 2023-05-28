@@ -30,12 +30,18 @@ func getObjectNameTag(object *v1.ObjectReference) string {
 	}
 }
 
-func processKubernetesEvent(clientset *kubernetes.Clientset, eventObject *v1.Event, hub *sentry.Hub) {
+func processKubernetesEvent(ctx context.Context, eventObject *v1.Event) {
 	log.Debug().Msgf("EventObject: %#v", eventObject)
 	log.Debug().Msgf("Event type: %#v", eventObject.Type)
 
 	originalEvent := eventObject.DeepCopy()
 	involvedObject := eventObject.InvolvedObject
+
+	hub := sentry.GetHubFromContext(ctx)
+	if hub == nil {
+		log.Error().Msgf("Cannot get Sentry hub from context")
+		return
+	}
 
 	hub.WithScope(func(scope *sentry.Scope) {
 		scope.SetTag("event_type", eventObject.Type)
@@ -69,7 +75,7 @@ func processKubernetesEvent(clientset *kubernetes.Clientset, eventObject *v1.Eve
 			scope.SetExtra("~ Misc Event Fields", kubeEvent)
 		}
 
-		runEnhancers(clientset, originalEvent, scope)
+		runEnhancers(ctx, originalEvent, scope)
 
 		sentryEvent := &sentry.Event{Message: eventObject.Message, Level: sentry.LevelError}
 		hub.CaptureEvent(sentryEvent)
@@ -77,7 +83,7 @@ func processKubernetesEvent(clientset *kubernetes.Clientset, eventObject *v1.Eve
 
 }
 
-func handleWatchEvent(event *watch.Event, clientset *kubernetes.Clientset, hub *sentry.Hub, cutoffTime metav1.Time) {
+func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1.Time) {
 	eventObjectRaw := event.Object
 	// Watch event type: Added, Delete, Bookmark...
 	if (event.Type != watch.Added) && (event.Type != watch.Modified) {
@@ -108,17 +114,14 @@ func handleWatchEvent(event *watch.Event, clientset *kubernetes.Clientset, hub *
 		return
 	}
 
-	processKubernetesEvent(clientset, eventObject, hub)
+	processKubernetesEvent(ctx, eventObject)
 }
 
-func watchEventsInNamespace(config *rest.Config, namespace string, watchSince time.Time, hub *sentry.Hub) (err error) {
-	clientset, err := kubernetes.NewForConfig(config)
+func watchEventsInNamespace(ctx context.Context, namespace string, watchSince time.Time) (err error) {
+	clientset, err := getClientsetFromContext(ctx)
 	if err != nil {
 		return err
 	}
-
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
 
 	watchFunc := func(options metav1.ListOptions) (watch.Interface, error) {
 		opts := metav1.ListOptions{
@@ -139,14 +142,15 @@ func watchEventsInNamespace(config *rest.Config, namespace string, watchSince ti
 
 	log.Debug().Msg("Reading from the event channel...")
 	for event := range watchCh {
-		handleWatchEvent(&event, clientset, hub, watchSinceWrapped)
+		handleWatchEvent(ctx, &event, watchSinceWrapped)
 	}
 
 	return nil
 }
 
-func watchEventsInNamespaceForever(config *rest.Config, namespace string) {
+func watchEventsInNamespaceForever(config *rest.Config, namespace string) error {
 	localHub := sentry.CurrentHub().Clone()
+	ctx := sentry.SetHubOnContext(context.Background(), localHub)
 
 	where := fmt.Sprintf("in namespace '%s'", namespace)
 	if namespace == v1.NamespaceAll {
@@ -163,8 +167,15 @@ func watchEventsInNamespaceForever(config *rest.Config, namespace string) {
 		log.Info().Msgf("Watching events starting from: %s", watchSince.Format("Mon, 02 Jan 2006 15:04:05 -0700"))
 	}
 
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return err
+	}
+
+	ctx = setClientsetOnContext(ctx, clientset)
+
 	for {
-		if err := watchEventsInNamespace(config, namespace, watchSince, localHub); err != nil {
+		if err := watchEventsInNamespace(ctx, namespace, watchSince); err != nil {
 			log.Error().Msgf("Error while watching events %s: %s", where, err)
 		}
 		watchSince = time.Now()
