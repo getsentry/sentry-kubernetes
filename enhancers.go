@@ -14,6 +14,8 @@ import (
 const breadcrumbLimit = 20
 
 func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope, sentryEvent *sentry.Event) error {
+	logger := zerolog.Ctx(ctx)
+
 	clientset, err := getClientsetFromContext(ctx)
 	if err != nil {
 		return err
@@ -22,6 +24,8 @@ func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope, s
 	namespace := event.Namespace
 	podName := event.InvolvedObject.Name
 	opts := metav1.GetOptions{}
+
+	logger.Debug().Msgf("Fetching pod data")
 	pod, err := clientset.CoreV1().Pods(namespace).Get(context.Background(), podName, opts)
 	if err != nil {
 		return err
@@ -62,6 +66,8 @@ func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope, s
 
 	// Adjust fingerprint
 	if len(pod.OwnerReferences) > 0 {
+		// If the pod is controlled by something (e.g. a replicaset), group all issues
+		// for all controlled pod together.
 		owner := pod.OwnerReferences[0]
 		sentryEvent.Fingerprint = []string{event.Message, owner.Name}
 	} else {
