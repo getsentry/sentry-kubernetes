@@ -6,7 +6,7 @@ metadata:
     run: deployment-create-container-error
     type: test-pod
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       run: deployment-create-container-error

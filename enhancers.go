@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/rs/zerolog"
@@ -12,7 +13,7 @@ import (
 
 const breadcrumbLimit = 20
 
-func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope) error {
+func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope, sentryEvent *sentry.Event) error {
 	clientset, err := getClientsetFromContext(ctx)
 	if err != nil {
 		return err
@@ -40,7 +41,7 @@ func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope) e
 	}
 
 	// Add related events as breadcrumbs
-	podEvents := filterEventsFromBuffer(namespace, event.InvolvedObject.Kind, podName)
+	podEvents := filterEventsFromBuffer(namespace, "Pod", podName)
 	for _, podEvent := range podEvents {
 		breadcrumbLevel := sentry.LevelInfo
 		if podEvent.Type == v1.EventTypeWarning {
@@ -54,10 +55,23 @@ func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope) e
 		}, breadcrumbLimit)
 	}
 
+	// Adjust message
+	if !strings.Contains(event.Message, podName) {
+		sentryEvent.Message = fmt.Sprintf("%s: %s", podName, event.Message)
+	}
+
+	// Adjust fingerprint
+	if len(pod.OwnerReferences) > 0 {
+		owner := pod.OwnerReferences[0]
+		sentryEvent.Fingerprint = []string{event.Message, owner.Name}
+	} else {
+		sentryEvent.Fingerprint = []string{event.Message, podName}
+	}
+
 	return nil
 }
 
-func runEnhancers(ctx context.Context, event *v1.Event, scope *sentry.Scope) {
+func runEnhancers(ctx context.Context, event *v1.Event, scope *sentry.Scope, sentryEvent *sentry.Event) {
 	logger := (zerolog.Ctx(ctx).With().
 		Str("object", fmt.Sprintf("%s/%s", event.InvolvedObject.Kind, event.InvolvedObject.Name)).
 		Logger())
@@ -66,6 +80,6 @@ func runEnhancers(ctx context.Context, event *v1.Event, scope *sentry.Scope) {
 	logger.Debug().Msgf("Running enhancers...")
 	switch event.InvolvedObject.Kind {
 	case "Pod":
-		runPodEnhancer(ctx, event, scope)
+		runPodEnhancer(ctx, event, scope, sentryEvent)
 	}
 }

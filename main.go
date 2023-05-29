@@ -79,12 +79,15 @@ func processKubernetesEvent(ctx context.Context, eventObject *v1.Event) {
 			scope.SetExtra("~ Misc Event Fields", kubeEvent)
 		}
 
-		runEnhancers(ctx, originalEvent, scope)
-
-		sentryEvent := &sentry.Event{Message: eventObject.Message, Level: sentry.LevelError}
+		sentryEvent := buildSentryEvent(ctx, originalEvent, scope)
 		hub.CaptureEvent(sentryEvent)
 	})
+}
 
+func buildSentryEvent(ctx context.Context, event *v1.Event, scope *sentry.Scope) *sentry.Event {
+	sentryEvent := &sentry.Event{Message: event.Message, Level: sentry.LevelError}
+	runEnhancers(ctx, event, scope, sentryEvent)
+	return sentryEvent
 }
 
 func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1.Time) {
@@ -117,12 +120,12 @@ func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1
 
 	if eventObject.Type == v1.EventTypeNormal {
 		logger.Debug().Msgf("Skipping an event of type %s", eventObject.Type)
+		addEventToBuffer(eventObject)
 		return
 	}
 
 	processKubernetesEvent(ctx, eventObject)
 
-	// FIXME: we should also Normal events to the buffer
 	addEventToBuffer(eventObject)
 }
 
