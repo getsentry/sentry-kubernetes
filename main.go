@@ -9,7 +9,7 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
+	globalLogger "github.com/rs/zerolog/log"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -31,15 +31,17 @@ func getObjectNameTag(object *v1.ObjectReference) string {
 }
 
 func processKubernetesEvent(ctx context.Context, eventObject *v1.Event) {
-	log.Debug().Msgf("EventObject: %#v", eventObject)
-	log.Debug().Msgf("Event type: %#v", eventObject.Type)
+	logger := zerolog.Ctx(ctx)
+
+	logger.Debug().Msgf("EventObject: %#v", eventObject)
+	logger.Debug().Msgf("Event type: %#v", eventObject.Type)
 
 	originalEvent := eventObject.DeepCopy()
 	involvedObject := eventObject.InvolvedObject
 
 	hub := sentry.GetHubFromContext(ctx)
 	if hub == nil {
-		log.Error().Msgf("Cannot get Sentry hub from context")
+		logger.Error().Msgf("Cannot get Sentry hub from context")
 		return
 	}
 
@@ -84,17 +86,19 @@ func processKubernetesEvent(ctx context.Context, eventObject *v1.Event) {
 }
 
 func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1.Time) {
+	logger := zerolog.Ctx(ctx)
+
 	eventObjectRaw := event.Object
 	// Watch event type: Added, Delete, Bookmark...
 	if (event.Type != watch.Added) && (event.Type != watch.Modified) {
-		log.Debug().Msgf("Skipping a watch event of type %s", event.Type)
+		logger.Debug().Msgf("Skipping a watch event of type %s", event.Type)
 		return
 	}
 
 	objectKind := eventObjectRaw.GetObjectKind()
 	eventObject, ok := eventObjectRaw.(*v1.Event)
 	if !ok {
-		log.Warn().Msgf("Skipping an event of kind '%v' because it cannot be casted", objectKind)
+		logger.Warn().Msgf("Skipping an event of kind '%v' because it cannot be casted", objectKind)
 		return
 	}
 
@@ -105,12 +109,12 @@ func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1
 	}
 
 	if !cutoffTime.IsZero() && !eventTs.IsZero() && eventTs.Before(&cutoffTime) {
-		log.Debug().Msgf("Ignoring an event because it is too old")
+		logger.Debug().Msgf("Ignoring an event because it is too old")
 		return
 	}
 
 	if eventObject.Type == v1.EventTypeNormal {
-		log.Debug().Msgf("Skipping an event of type %s", eventObject.Type)
+		logger.Debug().Msgf("Skipping an event of type %s", eventObject.Type)
 		return
 	}
 
@@ -118,6 +122,8 @@ func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1
 }
 
 func watchEventsInNamespace(ctx context.Context, namespace string, watchSince time.Time) (err error) {
+	logger := zerolog.Ctx(ctx)
+
 	clientset, err := getClientsetFromContext(ctx)
 	if err != nil {
 		return err
@@ -129,7 +135,7 @@ func watchEventsInNamespace(ctx context.Context, namespace string, watchSince ti
 		}
 		return clientset.CoreV1().Events(namespace).Watch(ctx, opts)
 	}
-	log.Debug().Msg("Getting the event watcher...")
+	logger.Debug().Msg("Getting the event watcher...")
 	retryWatcher, err := toolsWatch.NewRetryWatcher("1", &cache.ListWatch{WatchFunc: watchFunc})
 	if err != nil {
 		return err
@@ -140,7 +146,7 @@ func watchEventsInNamespace(ctx context.Context, namespace string, watchSince ti
 
 	watchSinceWrapped := metav1.Time{Time: watchSince}
 
-	log.Debug().Msg("Reading from the event channel...")
+	logger.Debug().Msg("Reading from the event channel...")
 	for event := range watchCh {
 		handleWatchEvent(ctx, &event, watchSinceWrapped)
 	}
@@ -148,9 +154,15 @@ func watchEventsInNamespace(ctx context.Context, namespace string, watchSince ti
 	return nil
 }
 
-func watchEventsInNamespaceForever(config *rest.Config, namespace string) error {
+func watchEventsInNamespaceForever(ctx context.Context, config *rest.Config, namespace string) error {
 	localHub := sentry.CurrentHub().Clone()
-	ctx := sentry.SetHubOnContext(context.Background(), localHub)
+	ctx = sentry.SetHubOnContext(ctx, localHub)
+
+	// Attach the "namespace" tag to logger
+	logger := (zerolog.Ctx(ctx).With().
+		Str("namespace", namespace).
+		Logger())
+	ctx = logger.WithContext(ctx)
 
 	where := fmt.Sprintf("in namespace '%s'", namespace)
 	if namespace == v1.NamespaceAll {
@@ -161,10 +173,10 @@ func watchEventsInNamespaceForever(config *rest.Config, namespace string) error 
 	var watchSince time.Time
 	if watchFromBeginning {
 		watchSince = time.Time{}
-		log.Info().Msgf("Watching all available events (no starting timestamp)")
+		logger.Info().Msgf("Watching all available events (no starting timestamp)")
 	} else {
 		watchSince = time.Now()
-		log.Info().Msgf("Watching events starting from: %s", watchSince.Format("Mon, 02 Jan 2006 15:04:05 -0700"))
+		logger.Info().Msgf("Watching events starting from: %s", watchSince.Format("Mon, 02 Jan 2006 15:04:05 -0700"))
 	}
 
 	clientset, err := kubernetes.NewForConfig(config)
@@ -176,7 +188,7 @@ func watchEventsInNamespaceForever(config *rest.Config, namespace string) error 
 
 	for {
 		if err := watchEventsInNamespace(ctx, namespace, watchSince); err != nil {
-			log.Error().Msgf("Error while watching events %s: %s", where, err)
+			logger.Error().Msgf("Error while watching events %s: %s", where, err)
 		}
 		watchSince = time.Now()
 		time.Sleep(time.Second * 1)
@@ -190,9 +202,9 @@ func getClusterVersion(config *rest.Config) (*k8sVersion.Info, error) {
 	if err != nil {
 		return versionInfo, err
 	}
-	log.Debug().Msgf("Fetching cluster version...")
+	globalLogger.Debug().Msgf("Fetching cluster version...")
 	versionInfo, err = discoveryClient.ServerVersion()
-	log.Debug().Msgf("Cluster version: %s", versionInfo)
+	globalLogger.Debug().Msgf("Cluster version: %s", versionInfo)
 	return versionInfo, err
 }
 
@@ -206,7 +218,7 @@ func setKubernetesSentryContext(config *rest.Config) {
 	if err == nil {
 		kubernetesContext["Server version"] = clusterVersion.String()
 	} else {
-		log.Error().Msgf("Error while getting cluster version: %s", err)
+		globalLogger.Error().Msgf("Error while getting cluster version: %s", err)
 	}
 
 	sentry.CurrentHub().Scope().SetContext(
@@ -255,7 +267,7 @@ func getNamespacesToWatch() (watchAll bool, namespaces []string, err error) {
 }
 
 func configureLogging() {
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
+	globalLogger.Logger = globalLogger.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 }
 
 func setGlobalSentryTags() {
@@ -268,7 +280,7 @@ func setGlobalSentryTags() {
 		tagPrefix := "SENTRY_K8S_GLOBAL_TAG_"
 		if strings.HasPrefix(key, tagPrefix) {
 			tagKey := strings.TrimPrefix(key, tagPrefix)
-			log.Info().Msgf("Global tag detected: %s=%s", tagKey, value)
+			globalLogger.Info().Msgf("Global tag detected: %s=%s", tagKey, value)
 			sentry.CurrentHub().Scope().SetTag(tagKey, value)
 		}
 	}
@@ -281,7 +293,7 @@ func main() {
 
 	config, err := getClusterConfig()
 	if err != nil {
-		log.Fatal().Msgf("Config init error: %s", err)
+		globalLogger.Fatal().Msgf("Config init error: %s", err)
 	}
 
 	setKubernetesSentryContext(config)
@@ -289,15 +301,16 @@ func main() {
 
 	watchAllNamespaces, namespaces, err := getNamespacesToWatch()
 	if err != nil {
-		log.Fatal().Msgf("Cannot parse namespaces to watch: %s", err)
+		globalLogger.Fatal().Msgf("Cannot parse namespaces to watch: %s", err)
 	}
 
 	if watchAllNamespaces {
 		namespaces = []string{v1.NamespaceAll}
 	}
 
+	ctx := globalLogger.Logger.WithContext(context.Background())
 	for _, namespace := range namespaces {
-		go watchEventsInNamespaceForever(config, namespace)
+		go watchEventsInNamespaceForever(ctx, config, namespace)
 	}
 
 	// Sleep forever

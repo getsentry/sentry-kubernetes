@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/getsentry/sentry-go"
+	"github.com/rs/zerolog"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -40,7 +41,12 @@ func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope) e
 }
 
 func runEnhancers(ctx context.Context, event *v1.Event, scope *sentry.Scope) {
-	fmt.Println("Running enhancers...")
+	logger := (zerolog.Ctx(ctx).With().
+		Str("object", fmt.Sprintf("%s/%s", event.InvolvedObject.Kind, event.InvolvedObject.Name)).
+		Logger())
+	ctx = logger.WithContext(ctx)
+
+	logger.Debug().Msgf("Running enhancers...")
 	switch event.InvolvedObject.Kind {
 	case "Pod":
 		runPodEnhancer(ctx, event, scope)
