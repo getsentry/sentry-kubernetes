@@ -10,6 +10,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const breadcrumbLimit = 20
+
 func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope) error {
 	clientset, err := getClientsetFromContext(ctx)
 	if err != nil {
@@ -35,6 +37,21 @@ func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope) e
 	metadataJson, err := prettyJson(pod.ObjectMeta)
 	if err == nil {
 		scope.SetExtra("Event Metadata", metadataJson)
+	}
+
+	// Add related events as breadcrumbs
+	podEvents := filterEventsFromBuffer(namespace, event.InvolvedObject.Kind, podName)
+	for _, podEvent := range podEvents {
+		breadcrumbLevel := sentry.LevelInfo
+		if podEvent.Type == v1.EventTypeWarning {
+			breadcrumbLevel = sentry.LevelWarning
+		}
+
+		scope.AddBreadcrumb(&sentry.Breadcrumb{
+			Message:   podEvent.Message,
+			Level:     breadcrumbLevel,
+			Timestamp: podEvent.LastTimestamp.Time,
+		}, breadcrumbLimit)
 	}
 
 	return nil

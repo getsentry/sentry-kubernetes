@@ -37,6 +37,8 @@ func processKubernetesEvent(ctx context.Context, eventObject *v1.Event) {
 	logger.Debug().Msgf("Event type: %#v", eventObject.Type)
 
 	originalEvent := eventObject.DeepCopy()
+	eventObject = eventObject.DeepCopy()
+
 	involvedObject := eventObject.InvolvedObject
 
 	hub := sentry.GetHubFromContext(ctx)
@@ -119,6 +121,9 @@ func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1
 	}
 
 	processKubernetesEvent(ctx, eventObject)
+
+	// FIXME: we should also Normal events to the buffer
+	addEventToBuffer(eventObject)
 }
 
 func watchEventsInNamespace(ctx context.Context, namespace string, watchSince time.Time) (err error) {
@@ -307,6 +312,10 @@ func main() {
 	if watchAllNamespaces {
 		namespaces = []string{v1.NamespaceAll}
 	}
+
+	// klog.InitFlags(nil)
+	// flag.Set("v", "8")
+	// flag.Parse()
 
 	ctx := globalLogger.Logger.WithContext(context.Background())
 	for _, namespace := range namespaces {
