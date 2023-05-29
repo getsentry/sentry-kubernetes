@@ -26,6 +26,7 @@ func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope, s
 	opts := metav1.GetOptions{}
 
 	logger.Debug().Msgf("Fetching pod data")
+	// FIXME: this can probably be cached if we use NewSharedInformerFactory
 	pod, err := clientset.CoreV1().Pods(namespace).Get(context.Background(), podName, opts)
 	if err != nil {
 		return err

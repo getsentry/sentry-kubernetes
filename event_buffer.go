@@ -7,6 +7,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
+// TODO: check if we even need this if we use NewSharedInformerFactory for
+// watching events.
+
 const bufferSize = 200
 
 var mu sync.RWMutex
