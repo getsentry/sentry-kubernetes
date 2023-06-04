@@ -12,16 +12,24 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-const typeInCluster = "in-cluster"
-const typeOutCluster = "out-cluster"
+const (
+	typeAutoCluster = "auto"
+	typeInCluster   = "in-cluster"
+	typeOutCluster  = "out-cluster"
+)
 
 func getClusterConfig() (*rest.Config, error) {
 	var config *rest.Config
 	var err error
 
 	configType := strings.ToLower(os.Getenv("SENTRY_K8S_CLUSTER_CONFIG_TYPE"))
+	configType = strings.TrimSpace(configType)
 
-	if configType != "" &&
+	if configType == "" {
+		configType = typeAutoCluster
+	}
+
+	if configType != typeAutoCluster &&
 		configType != typeInCluster &&
 		configType != typeOutCluster {
 		log.Fatal().Msgf(
@@ -30,7 +38,7 @@ func getClusterConfig() (*rest.Config, error) {
 		)
 	}
 
-	autoConfig := configType == ""
+	autoConfig := configType == typeAutoCluster
 	if autoConfig {
 		log.Info().Msg("Auto-detecting cluster configuration...")
 	}
