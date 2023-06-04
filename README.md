@@ -1,5 +1,7 @@
 # sentry-kubernetes
 
+Yet another Sentry Kubernetes agent (should it be called "YASKA"?)
+
 ## Configuration
 
 `SENTRY_DSN` - Sentry DSN that will be used by the agent.
