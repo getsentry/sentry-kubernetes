@@ -17,8 +17,15 @@ on:
       - build/**
 
 jobs:
-  prepare:
-    name: Prepare registries
+  build-and-push:
+    strategy:
+      matrix:
+        arch:
+          - linux/amd64
+          # - linux/arm64
+    permissions:
+      packages: write
+      contents: read
     runs-on: ubuntu-latest
     steps:
       # https://github.com/docker/setup-qemu-action
@@ -43,19 +50,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-  build-and-push:
-    name: Push Docker image to multiple registries
-    needs: prepare
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch:
-          - linux/amd64
-          # - linux/arm64
-    permissions:
-      packages: write
-      contents: read
-    steps:
       - name: Check out the repo
         uses: actions/checkout@v3
 
