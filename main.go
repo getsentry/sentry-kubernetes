@@ -12,10 +12,7 @@ import (
 	globalLogger "github.com/rs/zerolog/log"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/validation"
-	k8sVersion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
@@ -82,12 +79,6 @@ func processKubernetesEvent(ctx context.Context, eventObject *v1.Event) {
 		sentryEvent := buildSentryEvent(ctx, originalEvent, scope)
 		hub.CaptureEvent(sentryEvent)
 	})
-}
-
-func buildSentryEvent(ctx context.Context, event *v1.Event, scope *sentry.Scope) *sentry.Event {
-	sentryEvent := &sentry.Event{Message: event.Message, Level: sentry.LevelError}
-	runEnhancers(ctx, event, scope, sentryEvent)
-	return sentryEvent
 }
 
 func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1.Time) {
@@ -210,95 +201,8 @@ func watchEventsInNamespaceForever(ctx context.Context, config *rest.Config, nam
 	}
 }
 
-func getClusterVersion(config *rest.Config) (*k8sVersion.Info, error) {
-	versionInfo := &k8sVersion.Info{}
-
-	discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
-	if err != nil {
-		return versionInfo, err
-	}
-	globalLogger.Debug().Msgf("Fetching cluster version...")
-	versionInfo, err = discoveryClient.ServerVersion()
-	globalLogger.Debug().Msgf("Cluster version: %s", versionInfo)
-	return versionInfo, err
-}
-
-func setKubernetesSentryContext(config *rest.Config) {
-	kubernetesContext := map[string]interface{}{
-		"API endpoint": config.Host,
-	}
-
-	// Get cluster version via API
-	clusterVersion, err := getClusterVersion(config)
-	if err == nil {
-		kubernetesContext["Server version"] = clusterVersion.String()
-	} else {
-		globalLogger.Error().Msgf("Error while getting cluster version: %s", err)
-	}
-
-	sentry.CurrentHub().Scope().SetContext(
-		"Kubernetes",
-		kubernetesContext,
-	)
-}
-
-var defaultNamespacesToWatch = []string{v1.NamespaceDefault}
-
-const allNamespacesLabel = "__all__"
-
-func getNamespacesToWatch() (watchAll bool, namespaces []string, err error) {
-	watchNamespacesRaw := strings.TrimSpace(os.Getenv("SENTRY_K8S_WATCH_NAMESPACES"))
-
-	// Nothing in the env variable => use the default value
-	if watchNamespacesRaw == "" {
-		return false, defaultNamespacesToWatch, nil
-	}
-
-	// Special label => watch all namespaces
-	if watchNamespacesRaw == allNamespacesLabel {
-		return true, []string{}, nil
-	}
-
-	rawNamespaces := strings.Split(watchNamespacesRaw, ",")
-	namespaces = make([]string, 0, len(rawNamespaces))
-	for _, rawNamespace := range rawNamespaces {
-		namespace := strings.TrimSpace(rawNamespace)
-		if namespace == "" {
-			continue
-		}
-		errors := validation.IsValidLabelValue(namespace)
-		if len(errors) != 0 {
-			// Not a valid namespace name
-			return false, []string{}, fmt.Errorf(errors[0])
-		}
-		namespaces = append(namespaces, namespace)
-	}
-	namespaces = removeDuplicates(namespaces)
-	if len(namespaces) == 0 {
-		return false, namespaces, fmt.Errorf("no namespaces specified")
-	}
-
-	return false, namespaces, nil
-}
-
 func configureLogging() {
 	globalLogger.Logger = globalLogger.Output(zerolog.ConsoleWriter{Out: os.Stdout})
-}
-
-func setGlobalSentryTags() {
-	for _, e := range os.Environ() {
-		pair := strings.SplitN(e, "=", 2)
-		if len(pair) != 2 {
-			continue
-		}
-		key, value := strings.TrimSpace(pair[0]), strings.TrimSpace(pair[1])
-		tagPrefix := "SENTRY_K8S_GLOBAL_TAG_"
-		if strings.HasPrefix(key, tagPrefix) {
-			tagKey := strings.TrimPrefix(key, tagPrefix)
-			globalLogger.Info().Msgf("Global tag detected: %s=%s", tagKey, value)
-			sentry.CurrentHub().Scope().SetTag(tagKey, value)
-		}
-	}
 }
 
 func main() {
