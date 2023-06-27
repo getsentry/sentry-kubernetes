@@ -14,8 +14,6 @@ Yet another Sentry Kubernetes agent (should it be called "YASKA"?)
 
 `SENTRY_K8S_KUBECONFIG_PATH` - filesystem path to the `kubeconfig` configuration that will be used to connect to the cluster. Not used if `SENTRY_K8S_CLUSTER_CONFIG_TYPE` is set to `in-cluster`.
 
-`SENTRY_K8S_MONITOR_CRONJOBS` - if set to `1`, enable the (experimental) cronjob monitoring.
-
 ### Adding custom tags
 
 To add a custom tag to all events produced by the agent, set an environment variable, whose name is prefixed with `SENTRY_K8S_GLOBAL_TAG_`.
