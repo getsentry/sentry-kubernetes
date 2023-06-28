@@ -60,8 +60,10 @@ jobs:
           platforms: "${{ matrix.arch }}"
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: |
-            tonyo/sentry-kubernetes
-            ghcr.io/${{ github.repository }}
+            tonyo/sentry-kubernetes:latest
+            tonyo/sentry-kubernetes:${{ github.sha }}
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
 
   # generate-sbom:
   #   name: Generate SBOM
