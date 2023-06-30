@@ -45,17 +45,14 @@ func processKubernetesEvent(ctx context.Context, eventObject *v1.Event) {
 	}
 
 	hub.WithScope(func(scope *sentry.Scope) {
-		scope.SetTag("event_type", eventObject.Type)
-		scope.SetTag("reason", eventObject.Reason)
-		scope.SetTag("kind", involvedObject.Kind)
-		scope.SetTag("object_uid", string(involvedObject.UID))
-		if involvedObject.Namespace != "" {
-			// Namespace can be empty if it's a non-namespaced object (e.g. a Node)
-			scope.SetTag("namespace", involvedObject.Namespace)
-		}
+		setTagIfNotEmpty(scope, "event_type", eventObject.Type)
+		setTagIfNotEmpty(scope, "reason", eventObject.Reason)
+		setTagIfNotEmpty(scope, "kind", involvedObject.Kind)
+		setTagIfNotEmpty(scope, "object_uid", string(involvedObject.UID))
+		setTagIfNotEmpty(scope, "namespace", involvedObject.Namespace)
 
 		name_tag := getObjectNameTag(&involvedObject)
-		scope.SetTag(name_tag, involvedObject.Name)
+		setTagIfNotEmpty(scope, name_tag, involvedObject.Name)
 
 		if source, err := prettyJson(eventObject.Source); err == nil {
 			scope.SetExtra("Event Source", source)

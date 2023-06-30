@@ -36,9 +36,7 @@ func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope, s
 	pod.ManagedFields = []metav1.ManagedFieldsEntry{}
 
 	nodeName := pod.Spec.NodeName
-	if nodeName != "" {
-		scope.SetTag("node_name", nodeName)
-	}
+	setTagIfNotEmpty(scope, "node_name", nodeName)
 
 	metadataJson, err := prettyJson(pod.ObjectMeta)
 	if err == nil {

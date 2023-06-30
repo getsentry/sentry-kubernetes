@@ -81,3 +81,9 @@ func buildSentryEvent(ctx context.Context, event *v1.Event, scope *sentry.Scope)
 	runEnhancers(ctx, event, scope, sentryEvent)
 	return sentryEvent
 }
+
+func setTagIfNotEmpty(scope *sentry.Scope, key string, value string) {
+	if key != "" && value != "" {
+		scope.SetTag(key, value)
+	}
+}
