@@ -205,6 +205,25 @@ func watchEventsInNamespaceForever(ctx context.Context, config *rest.Config, nam
 }
 
 func configureLogging() {
+	levelMap := map[string]zerolog.Level{
+		"trace":    zerolog.TraceLevel,
+		"debug":    zerolog.DebugLevel,
+		"info":     zerolog.InfoLevel,
+		"warn":     zerolog.WarnLevel,
+		"error":    zerolog.ErrorLevel,
+		"fatal":    zerolog.FatalLevel,
+		"panic":    zerolog.PanicLevel,
+		"disabled": zerolog.Disabled,
+	}
+	logLevelRaw := strings.ToLower(os.Getenv("SENTRY_K8S_LOG_LEVEL"))
+
+	var logLevel zerolog.Level
+	logLevel, ok := levelMap[logLevelRaw]
+	if !ok {
+		logLevel = zerolog.InfoLevel
+	}
+
+	zerolog.SetGlobalLevel(logLevel)
 	globalLogger.Logger = globalLogger.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 }
 
