@@ -6,6 +6,8 @@ Yet another Sentry Kubernetes agent (should it be called "YASKA"?)
 
 `SENTRY_DSN` - Sentry DSN that will be used by the agent.
 
+`SENTRY_ENVIRONMENT` - Sentry environment that will be used for reported events.
+
 `SENTRY_K8S_WATCH_NAMESPACES` - a comma-separated list of namespaces that will be watched. Only the `default` namespace is watched by default.
 
 `SENTRY_K8S_WATCH_HISTORICAL` - if set to `1`, all existing (old) events will also be reported. Default is `0` (old events will not be reported).
