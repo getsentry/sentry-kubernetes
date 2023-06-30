@@ -101,6 +101,11 @@ func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1
 		return
 	}
 
+	namespace := eventObject.Namespace
+	if namespace != "" {
+		ctx, logger = getLoggerWithTag(ctx, "namespace", namespace)
+	}
+
 	// Get event timestamp
 	eventTs := eventObject.LastTimestamp
 	if eventTs.IsZero() {
@@ -160,16 +165,15 @@ func watchEventsInNamespaceForever(ctx context.Context, config *rest.Config, nam
 	localHub := sentry.CurrentHub().Clone()
 	ctx = sentry.SetHubOnContext(ctx, localHub)
 
-	// Attach the "namespace" tag to logger
-	logger := (zerolog.Ctx(ctx).With().
-		Str("namespace", namespace).
-		Logger())
-	ctx = logger.WithContext(ctx)
-
 	where := fmt.Sprintf("in namespace '%s'", namespace)
+	namespaceTag := namespace
 	if namespace == v1.NamespaceAll {
 		where = "in all namespaces"
+		namespaceTag = "__all__"
 	}
+
+	// Attach the "namespace" tag to logger
+	ctx, logger := getLoggerWithTag(ctx, "namespace", namespaceTag)
 
 	watchFromBeginning := isTruthy(os.Getenv("SENTRY_K8S_WATCH_HISTORICAL"))
 	var watchSince time.Time

@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
+
+	"github.com/rs/zerolog"
 )
 
 var truthyStrings map[string]struct{} = map[string]struct{}{
@@ -34,4 +37,13 @@ func removeDuplicates(slice []string) []string {
 		}
 	}
 	return res
+}
+
+func getLoggerWithTag(ctx context.Context, key string, value string) (context.Context, *zerolog.Logger) {
+	newLogger := (zerolog.Ctx(ctx).With().
+		Str(key, value).
+		Logger())
+	logger := &newLogger
+	ctx = logger.WithContext(ctx)
+	return ctx, logger
 }

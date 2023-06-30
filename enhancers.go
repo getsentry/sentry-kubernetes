@@ -79,10 +79,8 @@ func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope, s
 }
 
 func runEnhancers(ctx context.Context, event *v1.Event, scope *sentry.Scope, sentryEvent *sentry.Event) {
-	logger := (zerolog.Ctx(ctx).With().
-		Str("object", fmt.Sprintf("%s/%s", event.InvolvedObject.Kind, event.InvolvedObject.Name)).
-		Logger())
-	ctx = logger.WithContext(ctx)
+	involvedObject := fmt.Sprintf("%s/%s", event.InvolvedObject.Kind, event.InvolvedObject.Name)
+	ctx, logger := getLoggerWithTag(ctx, "object", involvedObject)
 
 	logger.Debug().Msgf("Running enhancers...")
 	switch event.InvolvedObject.Kind {
