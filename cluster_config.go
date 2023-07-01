@@ -47,7 +47,10 @@ func getClusterConfig() (*rest.Config, error) {
 		log.Debug().Msg("Initializing in-cluster config...")
 
 		config, err = rest.InClusterConfig()
-		if err != nil {
+		if err == nil {
+			log.Debug().Msg("Detected in-cluster configuration")
+			return config, nil
+		} else {
 			if autoConfig {
 				log.Warn().Msgf("Could not initialize in-cluster config")
 			} else {
