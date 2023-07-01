@@ -240,6 +240,7 @@ func main() {
 
 	setKubernetesSentryContext(config)
 	setGlobalSentryTags()
+	runIntegrations()
 
 	watchAllNamespaces, namespaces, err := getNamespacesToWatch()
 	if err != nil {

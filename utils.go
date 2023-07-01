@@ -40,10 +40,9 @@ func removeDuplicates(slice []string) []string {
 }
 
 func getLoggerWithTag(ctx context.Context, key string, value string) (context.Context, *zerolog.Logger) {
-	newLogger := (zerolog.Ctx(ctx).With().
+	logger := (zerolog.Ctx(ctx).With().
 		Str(key, value).
 		Logger())
-	logger := &newLogger
 	ctx = logger.WithContext(ctx)
-	return ctx, logger
+	return ctx, &logger
 }
