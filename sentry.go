@@ -38,6 +38,11 @@ func initSentrySDK() {
 	if err != nil {
 		globalLogger.Fatal().Msgf("sentry.Init: %s", err)
 	}
+
+	if sentry.CurrentHub().Client().Options().Dsn == "" {
+		globalLogger.Warn().Msg("No Sentry DSN specified, events will not be sent.")
+	}
+
 	globalLogger.Debug().Msg("Sentry SDK initialized")
 }
 

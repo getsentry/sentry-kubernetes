@@ -39,8 +39,10 @@ func runGkeIntegration() {
 
 	clusterName := instanceData["cluster-name"]
 	setTagIfNotEmpty(scope, "gke_cluster_name", clusterName)
+	logger.Info().Msgf("Cluster name detected: %q", clusterName)
 	clusterLocation := instanceData["cluster-location"]
 	setTagIfNotEmpty(scope, "gke_cluster_location", clusterLocation)
+	logger.Info().Msgf("Cluster location detected: %q", clusterLocation)
 
 	// Project metadata
 	projectMetadataUrl := "http://metadata.google.internal/computeMetadata/v1/project/?recursive=true"
@@ -59,6 +61,7 @@ func runGkeIntegration() {
 
 	projectName := projectData["projectId"]
 	setTagIfNotEmpty(scope, "gke_project_name", projectName)
+	logger.Info().Msgf("Project name detected: %q", projectName)
 
 	scope.SetContext(
 		"GKE Context",
