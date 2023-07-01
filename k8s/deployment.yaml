@@ -10,7 +10,6 @@ spec:
   selector:
     matchLabels:
       app: sentry-kubernetes
-  strategy: {}
   template:
     metadata:
       creationTimestamp: null
@@ -18,9 +17,9 @@ spec:
         app: sentry-kubernetes
     spec:
       containers:
-        - image: sentry-kubernetes
+        - image: tonyo/sentry-kubernetes:7caee4eda07fe49a331d0cd3adaae67b625388c3
           name: sentry-kubernetes
-          resources: {}
-          imagePullPolicy: Never
-      serviceAccount: watch-events
-status: {}
+          env:
+            - name: SENTRY_K8S_LOG_LEVEL
+              value: debug
+      serviceAccount: sentry-k8s-agent

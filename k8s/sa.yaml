@@ -2,13 +2,13 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: watch-events
+  name: sentry-k8s-agent
   namespace: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: watch-events-cluster
+  name: sentry-k8s-agent-cluster
 rules:
   - apiGroups:
       - ""
@@ -20,12 +20,12 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: watch-events-cluster
+  name: sentry-k8s-agent-cluster
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: watch-events-cluster
+  name: sentry-k8s-agent-cluster
 subjects:
   - kind: ServiceAccount
-    name: watch-events
+    name: sentry-k8s-agent
     namespace: default
