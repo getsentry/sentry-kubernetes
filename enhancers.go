@@ -40,8 +40,11 @@ func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope, s
 
 	metadataJson, err := prettyJson(pod.ObjectMeta)
 	if err == nil {
-		scope.SetExtra("Event Metadata", metadataJson)
+		scope.SetExtra("Pod Metadata", metadataJson)
 	}
+
+	// The data will be mostly duplicated in "Pod Metadata"
+	scope.RemoveExtra("Involved Object")
 
 	// Add related events as breadcrumbs
 	podEvents := filterEventsFromBuffer(namespace, "Pod", podName)

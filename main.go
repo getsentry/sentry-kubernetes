@@ -57,6 +57,7 @@ func processKubernetesEvent(ctx context.Context, eventObject *v1.Event) {
 		if source, err := prettyJson(eventObject.Source); err == nil {
 			scope.SetExtra("Event Source", source)
 		}
+		setTagIfNotEmpty(scope, "event_source_component", eventObject.Source.Component)
 		eventObject.Source = v1.EventSource{}
 
 		if involvedObject, err := prettyJson(eventObject.InvolvedObject); err == nil {
