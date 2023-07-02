@@ -80,9 +80,14 @@ func runEnhancers(ctx context.Context, event *v1.Event, scope *sentry.Scope, sen
 	involvedObject := fmt.Sprintf("%s/%s", event.InvolvedObject.Kind, event.InvolvedObject.Name)
 	ctx, logger := getLoggerWithTag(ctx, "object", involvedObject)
 
+	var err error
 	logger.Debug().Msgf("Running enhancers...")
 	switch event.InvolvedObject.Kind {
 	case "Pod":
-		runPodEnhancer(ctx, event, scope, sentryEvent)
+		err = runPodEnhancer(ctx, event, scope, sentryEvent)
+	}
+
+	if err != nil {
+		logger.Error().Msgf("Error running an enhancer: %v", err)
 	}
 }
