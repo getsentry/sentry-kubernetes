@@ -4,19 +4,19 @@ Yet another Sentry Kubernetes agent (should it be called "YASKA"?)
 
 ## Configuration
 
-`SENTRY_DSN` - Sentry DSN that will be used by the agent.
+- `SENTRY_DSN` - Sentry DSN that will be used by the agent.
 
-`SENTRY_ENVIRONMENT` - Sentry environment that will be used for reported events.
+- `SENTRY_ENVIRONMENT` - Sentry environment that will be used for reported events.
 
-`SENTRY_K8S_WATCH_NAMESPACES` - a comma-separated list of namespaces that will be watched. Only the `default` namespace is watched by default.
+- `SENTRY_K8S_WATCH_NAMESPACES` - a comma-separated list of namespaces that will be watched. Only the `default` namespace is watched by default.
 
-`SENTRY_K8S_WATCH_HISTORICAL` - if set to `1`, all existing (old) events will also be reported. Default is `0` (old events will not be reported).
+- `SENTRY_K8S_WATCH_HISTORICAL` - if set to `1`, all existing (old) events will also be reported. Default is `0` (old events will not be reported).
 
-`SENTRY_K8S_CLUSTER_CONFIG_TYPE` - the type of the cluster initialization method. Allowed options: `auto`, `in-cluster`, `out-cluster`. Default is `auto`.
+- `SENTRY_K8S_CLUSTER_CONFIG_TYPE` - the type of the cluster initialization method. Allowed options: `auto`, `in-cluster`, `out-cluster`. Default is `auto`.
 
-`SENTRY_K8S_KUBECONFIG_PATH` - filesystem path to the `kubeconfig` configuration that will be used to connect to the cluster. Not used if `SENTRY_K8S_CLUSTER_CONFIG_TYPE` is set to `in-cluster`.
+- `SENTRY_K8S_KUBECONFIG_PATH` - filesystem path to the `kubeconfig` configuration that will be used to connect to the cluster. Not used if `SENTRY_K8S_CLUSTER_CONFIG_TYPE` is set to `in-cluster`.
 
-`SENTRY_K8S_LOG_LEVEL` - logging level. Can be `trace`, `debug`, `info`, `warn`, `error`, `disabled`. Default is `info`.
+- `SENTRY_K8S_LOG_LEVEL` - logging level. Can be `trace`, `debug`, `info`, `warn`, `error`, `disabled`. Default is `info`.
 
 ### Adding custom tags
 
@@ -28,6 +28,6 @@ To add a custom tag to all events produced by the agent, set an environment vari
 
 ### Integrations
 
-- `SENTRY_K8S_INTEGRATION_GKE_ENABLED` - if set to `1`, enable GKE integration. Default is `0` (disabled).
+- `SENTRY_K8S_INTEGRATION_GKE_ENABLED` - if set to `1`, enable the [GKE](https://cloud.google.com/kubernetes-engine/) integration. Default is `0` (disabled).
 
-  The GKE integration will attempt to fetch GKE/GCE metadata from the metadata server, such as project name, cluster name, and cluster location.
+  The GKE integration will attempt to fetch GKE/GCE metadata from [the GCP metadata server](https://cloud.google.com/compute/docs/metadata/overview), such as project name, cluster name, and cluster location.
