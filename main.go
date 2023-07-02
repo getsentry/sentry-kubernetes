@@ -27,7 +27,7 @@ func getObjectNameTag(object *v1.ObjectReference) string {
 	}
 }
 
-func processKubernetesEvent(ctx context.Context, eventObject *v1.Event) {
+func processKubernetesEvent(ctx context.Context, eventObject *v1.Event, scope *sentry.Scope) *sentry.Event {
 	logger := zerolog.Ctx(ctx)
 
 	logger.Debug().Msgf("EventObject: %#v", eventObject)
@@ -38,48 +38,40 @@ func processKubernetesEvent(ctx context.Context, eventObject *v1.Event) {
 
 	involvedObject := eventObject.InvolvedObject
 
-	hub := sentry.GetHubFromContext(ctx)
-	if hub == nil {
-		logger.Error().Msgf("Cannot get Sentry hub from context")
-		return
+	setTagIfNotEmpty(scope, "event_type", eventObject.Type)
+	setTagIfNotEmpty(scope, "reason", eventObject.Reason)
+	setTagIfNotEmpty(scope, "kind", involvedObject.Kind)
+	setTagIfNotEmpty(scope, "object_uid", string(involvedObject.UID))
+	setTagIfNotEmpty(scope, "namespace", involvedObject.Namespace)
+
+	name_tag := getObjectNameTag(&involvedObject)
+	setTagIfNotEmpty(scope, name_tag, involvedObject.Name)
+
+	if source, err := prettyJson(eventObject.Source); err == nil {
+		scope.SetExtra("Event Source", source)
+	}
+	setTagIfNotEmpty(scope, "event_source_component", eventObject.Source.Component)
+	eventObject.Source = v1.EventSource{}
+
+	if involvedObject, err := prettyJson(eventObject.InvolvedObject); err == nil {
+		scope.SetExtra("Involved Object", involvedObject)
+	}
+	eventObject.InvolvedObject = v1.ObjectReference{}
+
+	// clean-up the event a bit
+	eventObject.ObjectMeta.ManagedFields = []metav1.ManagedFieldsEntry{}
+	if metadata, err := prettyJson(eventObject.ObjectMeta); err == nil {
+		scope.SetExtra("Event Metadata", metadata)
+	}
+	eventObject.ObjectMeta = metav1.ObjectMeta{}
+
+	// The entire (remaining) event
+	if kubeEvent, err := prettyJson(eventObject); err == nil {
+		scope.SetExtra("~ Misc Event Fields", kubeEvent)
 	}
 
-	hub.WithScope(func(scope *sentry.Scope) {
-		setTagIfNotEmpty(scope, "event_type", eventObject.Type)
-		setTagIfNotEmpty(scope, "reason", eventObject.Reason)
-		setTagIfNotEmpty(scope, "kind", involvedObject.Kind)
-		setTagIfNotEmpty(scope, "object_uid", string(involvedObject.UID))
-		setTagIfNotEmpty(scope, "namespace", involvedObject.Namespace)
-
-		name_tag := getObjectNameTag(&involvedObject)
-		setTagIfNotEmpty(scope, name_tag, involvedObject.Name)
-
-		if source, err := prettyJson(eventObject.Source); err == nil {
-			scope.SetExtra("Event Source", source)
-		}
-		setTagIfNotEmpty(scope, "event_source_component", eventObject.Source.Component)
-		eventObject.Source = v1.EventSource{}
-
-		if involvedObject, err := prettyJson(eventObject.InvolvedObject); err == nil {
-			scope.SetExtra("Involved Object", involvedObject)
-		}
-		eventObject.InvolvedObject = v1.ObjectReference{}
-
-		// clean-up the event a bit
-		eventObject.ObjectMeta.ManagedFields = []metav1.ManagedFieldsEntry{}
-		if metadata, err := prettyJson(eventObject.ObjectMeta); err == nil {
-			scope.SetExtra("Event Metadata", metadata)
-		}
-		eventObject.ObjectMeta = metav1.ObjectMeta{}
-
-		// The entire event
-		if kubeEvent, err := prettyJson(eventObject); err == nil {
-			scope.SetExtra("~ Misc Event Fields", kubeEvent)
-		}
-
-		sentryEvent := buildSentryEvent(ctx, originalEvent, scope)
-		hub.CaptureEvent(sentryEvent)
-	})
+	sentryEvent := buildSentryEvent(ctx, originalEvent, scope)
+	return sentryEvent
 }
 
 func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1.Time) {
@@ -121,7 +113,17 @@ func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1
 		return
 	}
 
-	processKubernetesEvent(ctx, eventObject)
+	hub := sentry.GetHubFromContext(ctx)
+	if hub == nil {
+		logger.Error().Msgf("Cannot get Sentry hub from context")
+		return
+	}
+	hub.WithScope(func(scope *sentry.Scope) {
+		sentryEvent := processKubernetesEvent(ctx, eventObject, scope)
+		if sentryEvent != nil {
+			hub.CaptureEvent(sentryEvent)
+		}
+	})
 
 	addEventToBuffer(eventObject)
 }
