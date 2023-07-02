@@ -14,7 +14,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/sentry-kubernetes
 
 # Run the tests in the container
 FROM build-stage AS test-stage
-RUN go test -v ./...
+RUN CGO_ENABLED=0 GOOS=linux go test -v ./...
 
 # Use a slim container
 FROM gcr.io/distroless/static-debian11 AS build-slim-stage
