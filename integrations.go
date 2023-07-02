@@ -18,15 +18,26 @@ func runIntegrations() {
 	}
 }
 
+func buildGoogleMetadataRequest(url string) *http.Request {
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header = http.Header{
+		"Metadata-Flavor": {"Google"},
+	}
+	return req
+}
+
 func runGkeIntegration() {
 	_, logger := getLoggerWithTag(context.Background(), "integration", "gke")
 	logger.Info().Msg("Running GKE integration")
 
 	scope := sentry.CurrentHub().Scope()
 
+	client := http.Client{}
+
 	// Instance metadata
 	instanceMetadataUrl := "http://metadata.google.internal/computeMetadata/v1/instance/attributes/?recursive=true"
-	resp, err := http.Get(instanceMetadataUrl)
+	req := buildGoogleMetadataRequest(instanceMetadataUrl)
+	resp, err := client.Do(req)
 	if err != nil {
 		logger.Error().Msgf("Cannot fetch instance metadata: %v", err)
 		return
@@ -48,7 +59,8 @@ func runGkeIntegration() {
 
 	// Project metadata
 	projectMetadataUrl := "http://metadata.google.internal/computeMetadata/v1/project/?recursive=true"
-	resp, err = http.Get(projectMetadataUrl)
+	req = buildGoogleMetadataRequest(projectMetadataUrl)
+	resp, err = client.Do(req)
 	if err != nil {
 		logger.Error().Msgf("Cannot fetch project metadata: %v", err)
 		return
