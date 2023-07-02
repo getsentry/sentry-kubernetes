@@ -7,9 +7,11 @@ import (
 	"os"
 
 	"github.com/getsentry/sentry-go"
+	globalLogger "github.com/rs/zerolog/log"
 )
 
 func runIntegrations() {
+	globalLogger.Info().Msg("Running integrations...")
 	gkeIntegrationEnabled := isTruthy(os.Getenv("SENTRY_K8S_INTEGRATION_GKE_ENABLED"))
 	if gkeIntegrationEnabled {
 		runGkeIntegration()
@@ -26,14 +28,14 @@ func runGkeIntegration() {
 	instanceMetadataUrl := "http://metadata.google.internal/computeMetadata/v1/instance/attributes/?recursive=true"
 	resp, err := http.Get(instanceMetadataUrl)
 	if err != nil {
-		logger.Error().Msgf("Cannot fetch instance metadata: %w", err)
+		logger.Error().Msgf("Cannot fetch instance metadata: %v", err)
 		return
 	}
 	defer resp.Body.Close()
 
 	var instanceData map[string]string
 	if err = json.NewDecoder(resp.Body).Decode(&instanceData); err != nil {
-		logger.Error().Msgf("Cannot decode instance metadata: %w", err)
+		logger.Error().Msgf("Cannot decode instance metadata: %v", err)
 		return
 	}
 
@@ -48,14 +50,14 @@ func runGkeIntegration() {
 	projectMetadataUrl := "http://metadata.google.internal/computeMetadata/v1/project/?recursive=true"
 	resp, err = http.Get(projectMetadataUrl)
 	if err != nil {
-		logger.Error().Msgf("Cannot fetch project metadata: %w", err)
+		logger.Error().Msgf("Cannot fetch project metadata: %v", err)
 		return
 	}
 	defer resp.Body.Close()
 
 	var projectData map[string]string
 	if err = json.NewDecoder(resp.Body).Decode(&projectData); err != nil {
-		logger.Error().Msgf("Cannot decode project metadata: %w", err)
+		logger.Error().Msgf("Cannot decode project metadata: %v", err)
 		return
 	}
 

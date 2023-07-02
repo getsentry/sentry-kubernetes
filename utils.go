@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog"
+	globalLogger "github.com/rs/zerolog/log"
 )
 
 var truthyStrings map[string]struct{} = map[string]struct{}{
@@ -40,9 +41,16 @@ func removeDuplicates(slice []string) []string {
 }
 
 func getLoggerWithTag(ctx context.Context, key string, value string) (context.Context, *zerolog.Logger) {
-	logger := (zerolog.Ctx(ctx).With().
+	logger := zerolog.Ctx(ctx)
+	if logger == nil ||
+		logger == zerolog.DefaultContextLogger ||
+		logger.GetLevel() == zerolog.Disabled {
+		// Use the global logger if nothing was set on the context
+		logger = &globalLogger.Logger
+	}
+	extendedLogger := (logger.With().
 		Str(key, value).
 		Logger())
-	ctx = logger.WithContext(ctx)
-	return ctx, &logger
+	ctx = extendedLogger.WithContext(ctx)
+	return ctx, &extendedLogger
 }
