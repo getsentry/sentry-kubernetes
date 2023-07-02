@@ -1,12 +1,8 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
-	"net/http"
 	"os"
 
-	"github.com/getsentry/sentry-go"
 	globalLogger "github.com/rs/zerolog/log"
 )
 
@@ -16,73 +12,4 @@ func runIntegrations() {
 	if gkeIntegrationEnabled {
 		runGkeIntegration()
 	}
-}
-
-func buildGoogleMetadataRequest(url string) *http.Request {
-	req, _ := http.NewRequest("GET", url, nil)
-	req.Header = http.Header{
-		"Metadata-Flavor": {"Google"},
-	}
-	return req
-}
-
-func runGkeIntegration() {
-	_, logger := getLoggerWithTag(context.Background(), "integration", "gke")
-	logger.Info().Msg("Running GKE integration")
-
-	scope := sentry.CurrentHub().Scope()
-
-	client := http.Client{}
-
-	// Instance metadata
-	instanceMetadataUrl := "http://metadata.google.internal/computeMetadata/v1/instance/attributes/?recursive=true"
-	req := buildGoogleMetadataRequest(instanceMetadataUrl)
-	resp, err := client.Do(req)
-	if err != nil {
-		logger.Error().Msgf("Cannot fetch instance metadata: %v", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	var instanceData map[string]string
-	if err = json.NewDecoder(resp.Body).Decode(&instanceData); err != nil {
-		logger.Error().Msgf("Cannot decode instance metadata: %v", err)
-		return
-	}
-
-	clusterName := instanceData["cluster-name"]
-	setTagIfNotEmpty(scope, "gke_cluster_name", clusterName)
-	logger.Info().Msgf("Cluster name detected: %q", clusterName)
-	clusterLocation := instanceData["cluster-location"]
-	setTagIfNotEmpty(scope, "gke_cluster_location", clusterLocation)
-	logger.Info().Msgf("Cluster location detected: %q", clusterLocation)
-
-	// Project metadata
-	projectMetadataUrl := "http://metadata.google.internal/computeMetadata/v1/project/?recursive=true"
-	req = buildGoogleMetadataRequest(projectMetadataUrl)
-	resp, err = client.Do(req)
-	if err != nil {
-		logger.Error().Msgf("Cannot fetch project metadata: %v", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	var projectData map[string]string
-	if err = json.NewDecoder(resp.Body).Decode(&projectData); err != nil {
-		logger.Error().Msgf("Cannot decode project metadata: %v", err)
-		return
-	}
-
-	projectName := projectData["projectId"]
-	setTagIfNotEmpty(scope, "gke_project_name", projectName)
-	logger.Info().Msgf("Project name detected: %q", projectName)
-
-	scope.SetContext(
-		"GKE Context",
-		map[string]interface{}{
-			"Cluster name":     clusterName,
-			"Cluster location": clusterLocation,
-			"GCP project":      projectName,
-		},
-	)
 }
