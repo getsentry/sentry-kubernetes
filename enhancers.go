@@ -79,12 +79,28 @@ func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope, s
 	return nil
 }
 
+func runCommonEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope, sentryEvent *sentry.Event) error {
+	combinedFromSimilarEventsPrefix := "(combined from similar events):"
+	if strings.HasPrefix(sentryEvent.Message, combinedFromSimilarEventsPrefix) {
+		newMessage := strings.TrimPrefix(sentryEvent.Message, combinedFromSimilarEventsPrefix)
+		sentryEvent.Message = strings.TrimSpace(newMessage)
+		scope.SetTag("combined_from_similar", "true")
+	}
+
+	return nil
+}
+
 func runEnhancers(ctx context.Context, event *v1.Event, scope *sentry.Scope, sentryEvent *sentry.Event) {
 	involvedObject := fmt.Sprintf("%s/%s", event.InvolvedObject.Kind, event.InvolvedObject.Name)
 	ctx, logger := getLoggerWithTag(ctx, "object", involvedObject)
 
 	var err error
 	logger.Debug().Msgf("Running enhancers...")
+
+	// First, run the basic (common) enhancer
+	runCommonEnhancer(ctx, event, scope, sentryEvent)
+
+	// Then, run kind-specific enhancers
 	switch event.InvolvedObject.Kind {
 	case "Pod":
 		err = runPodEnhancer(ctx, event, scope, sentryEvent)
