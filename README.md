@@ -25,3 +25,9 @@ To add a custom tag to all events produced by the agent, set an environment vari
 **Example:**
 
 `SENTRY_K8S_GLOBAL_TAG_cluster_name=main-cluster` will add `cluster_name=main_cluster` tag to every outgoing Sentry event.
+
+### Integrations
+
+- `SENTRY_K8S_INTEGRATION_GKE_ENABLED` - if set to `1`, enable GKE integration. Default is `0` (disabled).
+
+  The GKE integration will attempt to fetch GKE/GCE metadata from the metadata server, such as project name, cluster name, and cluster location.
