@@ -235,6 +235,7 @@ func main() {
 	configureLogging()
 	initSentrySDK()
 	defer sentry.Flush(time.Second)
+	checkCommonEnhancerPatterns()
 
 	config, err := getClusterConfig()
 	if err != nil {
