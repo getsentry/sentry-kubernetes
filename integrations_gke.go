@@ -13,13 +13,46 @@ const instanceMetadataUrl = "http://metadata.google.internal/computeMetadata/v1/
 const projectMetadataUrl = "http://metadata.google.internal/computeMetadata/v1/project/?recursive=true"
 
 type InstanceMetadata struct {
-	ClusterName     string `json:"cluster-name"`
-	ClusterLocation string `json:"cluster-location"`
+	// Allow both types of casing for compatibility
+	ClusterName1     string `json:"cluster-name"`
+	ClusterName2     string `json:"clusterName"`
+	ClusterLocation1 string `json:"cluster-location"`
+	ClusterLocation2 string `json:"clusterLocation"`
 }
 
 type ProjectMetadata struct {
-	ProjectId        string `json:"projectId"`
-	NumericProjectId int    `json:"numbericProjectId"`
+	ProjectId1        string `json:"project-id"`
+	ProjectId2        string `json:"projectId"`
+	NumericProjectId1 int    `json:"numeric-project-id"`
+	NumericProjectId2 int    `json:"numericProjectId"`
+}
+
+func (im *InstanceMetadata) ClusterName() string {
+	if im.ClusterName1 != "" {
+		return im.ClusterName1
+	}
+	return im.ClusterName2
+}
+
+func (im *InstanceMetadata) ClusterLocation() string {
+	if im.ClusterLocation1 != "" {
+		return im.ClusterLocation1
+	}
+	return im.ClusterLocation2
+}
+
+func (pm *ProjectMetadata) ProjectId() string {
+	if pm.ProjectId1 != "" {
+		return pm.ProjectId1
+	}
+	return pm.ProjectId2
+}
+
+func (pm *ProjectMetadata) NumericProjectId() int {
+	if pm.NumericProjectId1 != 0 {
+		return pm.NumericProjectId1
+	}
+	return pm.NumericProjectId2
 }
 
 func readGoogleMetadata(url string, output interface{}) error {
@@ -56,9 +89,9 @@ func runGkeIntegration() {
 		return
 	}
 
-	clusterName := instanceMeta.ClusterName
+	clusterName := instanceMeta.ClusterName()
 	setTagIfNotEmpty(scope, "gke_cluster_name", clusterName)
-	clusterLocation := instanceMeta.ClusterLocation
+	clusterLocation := instanceMeta.ClusterLocation()
 	setTagIfNotEmpty(scope, "gke_cluster_location", clusterLocation)
 
 	// Project metadata
@@ -69,7 +102,7 @@ func runGkeIntegration() {
 		return
 	}
 
-	projectName := projectMeta.ProjectId
+	projectName := projectMeta.ProjectId()
 	setTagIfNotEmpty(scope, "gke_project_name", projectName)
 
 	gkeContext := map[string]interface{}{
@@ -81,7 +114,7 @@ func runGkeIntegration() {
 	logger.Info().Msgf("GKE Context discovered: %v", gkeContext)
 
 	scope.SetContext(
-		"GKE Context",
+		"Google Kubernetes Engine",
 		gkeContext,
 	)
 }
