@@ -55,6 +55,18 @@ func (pm *ProjectMetadata) NumericProjectId() int {
 	return pm.NumericProjectId2
 }
 
+func getClusterUrl(clusterLocation string, clusterName string, projectId string) string {
+	if clusterLocation == "" || clusterName == "" || projectId == "" {
+		return ""
+	}
+	return fmt.Sprintf(
+		"https://console.cloud.google.com/kubernetes/clusters/details/%s/%s/details?project=%s",
+		clusterLocation,
+		clusterName,
+		projectId,
+	)
+}
+
 func readGoogleMetadata(url string, output interface{}) error {
 	client := http.Client{}
 
@@ -109,6 +121,11 @@ func runGkeIntegration() {
 		"Cluster name":     clusterName,
 		"Cluster location": clusterLocation,
 		"GCP project":      projectName,
+	}
+
+	clusterUrl := getClusterUrl(clusterLocation, clusterName, projectName)
+	if clusterUrl != "" {
+		gkeContext["Cluster URL"] = clusterUrl
 	}
 
 	logger.Info().Msgf("GKE Context discovered: %v", gkeContext)
