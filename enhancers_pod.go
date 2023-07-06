@@ -62,8 +62,15 @@ func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope, s
 	}
 
 	// Adjust message
-	if !strings.Contains(event.Message, podName) {
-		sentryEvent.Message = fmt.Sprintf("%s: %s", podName, event.Message)
+	var message string
+	if sentryEvent.Message == "" {
+		message = event.Message
+	} else {
+		// Message may be already set by previous enhancers
+		message = sentryEvent.Message
+	}
+	if !strings.Contains(message, podName) {
+		sentryEvent.Message = fmt.Sprintf("%s: %s", podName, message)
 	}
 
 	// Adjust fingerprint

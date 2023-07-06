@@ -20,7 +20,7 @@ type commonMsgPattern struct {
 // Common message patterns that should be grouped better
 var patternsAll = []*commonMsgPattern{
 	{
-		regex:           regexp.MustCompile(`Memory cgroup out of memory: Killed process (?P<process_id>\d+) \((?P<process_name>\w+)\).*`),
+		regex:           regexp.MustCompile(`Memory cgroup out of memory: Killed process (?P<process_id>\d+) \((?P<process_name>[^)]+)\).*`),
 		fingerprintKeys: []string{"process_name"},
 	},
 }
