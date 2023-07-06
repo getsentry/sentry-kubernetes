@@ -20,8 +20,12 @@ type commonMsgPattern struct {
 // Common message patterns that should be grouped better
 var patternsAll = []*commonMsgPattern{
 	{
-		regex:           regexp.MustCompile(`Memory cgroup out of memory: Killed process (?P<process_id>\d+) \((?P<process_name>[^)]+)\).*`),
+		regex:           regexp.MustCompile(`^Memory cgroup out of memory: Killed process (?P<process_id>\d+) \((?P<process_name>[^)]+)\).*`),
 		fingerprintKeys: []string{"process_name"},
+	},
+	{
+		regex:           regexp.MustCompile(`^Readiness probe failed:.*`),
+		fingerprintKeys: []string{},
 	},
 }
 
@@ -48,14 +52,14 @@ func checkCommonEnhancerPatterns() {
 	}
 }
 
-func matchSinglePattern(ctx context.Context, message string, pattern *commonMsgPattern) []string {
+func matchSinglePattern(ctx context.Context, message string, pattern *commonMsgPattern) (fingerprint []string, matched bool) {
 	pat := pattern.regex
 
 	match := pat.FindStringSubmatch(message)
 
 	if match == nil {
 		// No match
-		return nil
+		return nil, false
 	}
 
 	subMatchMap := make(map[string]string)
@@ -69,11 +73,11 @@ func matchSinglePattern(ctx context.Context, message string, pattern *commonMsgP
 	}
 	fmt.Println(subMatchMap)
 
-	fingerprint := []string{pat.String()}
+	fingerprint = []string{pat.String()}
 	for _, value := range pattern.fingerprintKeys {
 		fingerprint = append(fingerprint, subMatchMap[value])
 	}
-	return fingerprint
+	return fingerprint, true
 }
 
 func matchCommonPatterns(ctx context.Context, event *v1.Event, scope *sentry.Scope, sentryEvent *sentry.Event) error {
@@ -83,8 +87,8 @@ func matchCommonPatterns(ctx context.Context, event *v1.Event, scope *sentry.Sco
 	logger.Trace().Msgf("Matching against message: %q", message)
 
 	for _, pattern := range patternsAll {
-		fingerprint := matchSinglePattern(ctx, message, pattern)
-		if fingerprint != nil {
+		fingerprint, matched := matchSinglePattern(ctx, message, pattern)
+		if matched {
 			logger.Trace().Msgf("Pattern match: %v, fingerprint: %v", pattern, fingerprint)
 			scope.SetFingerprint(fingerprint)
 			return nil

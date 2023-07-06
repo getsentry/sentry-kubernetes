@@ -74,13 +74,17 @@ func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope, s
 	}
 
 	// Adjust fingerprint
+	if len(sentryEvent.Fingerprint) == 0 {
+		sentryEvent.Fingerprint = []string{event.Message}
+	}
+
 	if len(pod.OwnerReferences) > 0 {
 		// If the pod is controlled by something (e.g. a replicaset), group all issues
 		// for all controlled pod together.
 		owner := pod.OwnerReferences[0]
-		sentryEvent.Fingerprint = []string{event.Message, owner.Name}
+		sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, owner.Name)
 	} else {
-		sentryEvent.Fingerprint = []string{event.Message, podName}
+		sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, podName)
 	}
 
 	return nil
