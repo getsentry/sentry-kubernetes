@@ -66,6 +66,13 @@ func setKubernetesSentryContext(config *rest.Config) {
 }
 
 func setGlobalSentryTags() {
+	scope := sentry.CurrentHub().Scope()
+
+	if hostname, err := os.Hostname(); err == nil {
+		setTagIfNotEmpty(scope, "agent_hostname", hostname)
+	}
+
+	// Read from environment
 	for _, e := range os.Environ() {
 		pair := strings.SplitN(e, "=", 2)
 		if len(pair) != 2 {
@@ -76,7 +83,7 @@ func setGlobalSentryTags() {
 		if strings.HasPrefix(key, tagPrefix) {
 			tagKey := strings.TrimPrefix(key, tagPrefix)
 			globalLogger.Info().Msgf("Global tag detected: %s=%s", tagKey, value)
-			sentry.CurrentHub().Scope().SetTag(tagKey, value)
+			setTagIfNotEmpty(scope, tagKey, value)
 		}
 	}
 }
