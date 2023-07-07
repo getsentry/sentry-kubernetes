@@ -31,3 +31,15 @@ To add a custom tag to all events produced by the agent, set an environment vari
 - `SENTRY_K8S_INTEGRATION_GKE_ENABLED` - if set to `1`, enable the [GKE](https://cloud.google.com/kubernetes-engine/) integration. Default is `0` (disabled).
 
   The GKE integration will attempt to fetch GKE/GCE metadata from [the GCP metadata server](https://cloud.google.com/compute/docs/metadata/overview), such as project name, cluster name, and cluster location.
+
+### Client-side Filters
+
+If you don't want to report certain kinds of events to Sentry, you can configure client-side filters.
+
+- Event Reason: filtering by `Event.Reason` field.
+
+  `SENTRY_K8S_FILTER_OUT_EVENT_REASONS` is a comma separated set of Reason values. If the event's Reason is in that list, the event will be dropped. By default, the following reasons are filtered out: `DockerStart`, `KubeletStart`, `NodeSysctlChange`, `ContainerdStart`.
+
+- Event Source: filtering by `Event.Source.Component` field.
+
+  `SENTRY_K8S_FILTER_OUT_EVENT_SOURCES` is a comma separated set of Source Component values. If the event's Source Component is in that list, the event will be dropped. By default, no events are filtered out by Source Component.

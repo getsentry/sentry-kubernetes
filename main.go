@@ -113,6 +113,16 @@ func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1
 		return
 	}
 
+	if isFilteredByReason(eventObject) {
+		logger.Debug().Msgf("Skipping an event with reason: %q", eventObject.Reason)
+		return
+	}
+
+	if isFilteredByEventSource(eventObject) {
+		logger.Debug().Msgf("Skipping an event with event source: %q", eventObject.Source.Component)
+		return
+	}
+
 	hub := sentry.GetHubFromContext(ctx)
 	if hub == nil {
 		logger.Error().Msgf("Cannot get Sentry hub from context")
@@ -236,6 +246,7 @@ func main() {
 	initSentrySDK()
 	defer sentry.Flush(time.Second)
 	checkCommonEnhancerPatterns()
+	prepareEventFilters()
 
 	config, err := getClusterConfig()
 	if err != nil {
