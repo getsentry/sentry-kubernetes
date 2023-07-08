@@ -38,8 +38,18 @@ If you don't want to report certain kinds of events to Sentry, you can configure
 
 - Event Reason: filtering by `Event.Reason` field.
 
-  `SENTRY_K8S_FILTER_OUT_EVENT_REASONS` is a comma separated set of Reason values. If the event's Reason is in that list, the event will be dropped. By default, the following reasons are filtered out: `DockerStart`, `KubeletStart`, `NodeSysctlChange`, `ContainerdStart`.
+  `SENTRY_K8S_FILTER_OUT_EVENT_REASONS` is a comma separated set of event Reason values. If the event's Reason is in that list, the event will be dropped. By default, the following reasons are filtered out (muted): `DockerStart`, `KubeletStart`, `NodeSysctlChange`, `ContainerdStart`.
 
 - Event Source: filtering by `Event.Source.Component` field.
 
-  `SENTRY_K8S_FILTER_OUT_EVENT_SOURCES` is a comma separated set of Source Component values. If the event's Source Component is in that list, the event will be dropped. By default, no events are filtered out by Source Component.
+  `SENTRY_K8S_FILTER_OUT_EVENT_SOURCES` is a comma separated set of Source Component values (examples include `kubelet`, `default-cheduler`, `job-controller`, `kernel-monitor`). If the event's Source Component is in that list, the event will be dropped. By default, no events are filtered out by Source Component.
+
+## Caveats
+
+- Pod errors (exiting with non-zero code, OOM events) are currently not tracked, because they cannot be easily seen from Event objects only. We need to watch Pod objects separately.
+- When the same event (for example, a failed readiness check) happens multiple times, Kubernetes might not report each of them individually, and instead combine them, and send with some backoff. The event message in that case will be prefixed with "(combined from similar events)" string, that we currently strip. AFAIK, there's no way to disable this batching behaviour.
+
+### Potential Improvements
+
+- For pod-related events: fetch last log lines and displaying them as breadcrumbs or stacktrace.
+- If GKE integration enabled: provide links to Google Logging.
