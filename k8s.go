@@ -64,3 +64,11 @@ func getClusterVersion(config *rest.Config) (*k8sVersion.Info, error) {
 	globalLogger.Debug().Msgf("Cluster version: %s", versionInfo)
 	return versionInfo, err
 }
+
+func getObjectNameTag(object *v1.ObjectReference) string {
+	if object.Kind == "" {
+		return "object_name"
+	} else {
+		return fmt.Sprintf("%s_name", strings.ToLower(object.Kind))
+	}
+}
