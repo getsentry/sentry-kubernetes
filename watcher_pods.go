@@ -36,9 +36,6 @@ func handlePodTerminationEvent(ctx context.Context, containerStatus *v1.Containe
 	// FIXME
 	setTagIfNotEmpty(scope, "event_source_component", "x-pod-controller")
 
-	// FIXME: build a proper event with enhancers
-	// sentryEvent := buildSentryEvent(ctx, originalEvent, scope)
-
 	message := state.Message
 	if message == "" {
 		message = fmt.Sprintf(
@@ -48,6 +45,8 @@ func handlePodTerminationEvent(ctx context.Context, containerStatus *v1.Containe
 		)
 	}
 
+	// FIXME: build a proper event with enhancers
+	// sentryEvent := buildSentryEvent(ctx, originalEvent, scope)
 	sentryEvent := &sentry.Event{Message: message, Level: sentry.LevelError}
 	return sentryEvent
 }

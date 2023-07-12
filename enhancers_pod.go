@@ -75,7 +75,7 @@ func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope, s
 
 	// Adjust fingerprint
 	if len(sentryEvent.Fingerprint) == 0 {
-		sentryEvent.Fingerprint = []string{event.Message}
+		sentryEvent.Fingerprint = []string{message}
 	}
 
 	if len(pod.OwnerReferences) > 0 {
