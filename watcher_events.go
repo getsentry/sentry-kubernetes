@@ -17,11 +17,10 @@ import (
 	toolsWatch "k8s.io/client-go/tools/watch"
 )
 
-func processKubernetesEvent(ctx context.Context, eventObject *v1.Event, scope *sentry.Scope) *sentry.Event {
+func processGeneralEvent(ctx context.Context, eventObject *v1.Event, scope *sentry.Scope) *sentry.Event {
 	logger := zerolog.Ctx(ctx)
 
 	logger.Debug().Msgf("EventObject: %#v", eventObject)
-	logger.Debug().Msgf("Event type: %#v", eventObject.Type)
 
 	originalEvent := eventObject.DeepCopy()
 	eventObject = eventObject.DeepCopy()
@@ -64,7 +63,7 @@ func processKubernetesEvent(ctx context.Context, eventObject *v1.Event, scope *s
 	return sentryEvent
 }
 
-func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1.Time) {
+func handleEventWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1.Time) {
 	logger := zerolog.Ctx(ctx)
 
 	eventObjectRaw := event.Object
@@ -119,7 +118,7 @@ func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1
 		return
 	}
 	hub.WithScope(func(scope *sentry.Scope) {
-		sentryEvent := processKubernetesEvent(ctx, eventObject, scope)
+		sentryEvent := processGeneralEvent(ctx, eventObject, scope)
 		if sentryEvent != nil {
 			hub.CaptureEvent(sentryEvent)
 		}
@@ -153,9 +152,9 @@ func watchEventsInNamespace(ctx context.Context, namespace string, watchSince ti
 
 	watchSinceWrapped := metav1.Time{Time: watchSince}
 
-	logger.Debug().Msg("Reading from the event channel...")
+	logger.Debug().Msg("Reading from the event channel (events)...")
 	for event := range watchCh {
-		handleWatchEvent(ctx, &event, watchSinceWrapped)
+		handleEventWatchEvent(ctx, &event, watchSinceWrapped)
 	}
 
 	return nil

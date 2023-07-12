@@ -2,13 +2,167 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"time"
 
-	globalLogger "github.com/rs/zerolog/log"
+	"github.com/getsentry/sentry-go"
+	"github.com/rs/zerolog"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
+	toolsWatch "k8s.io/client-go/tools/watch"
 )
+
+func handlePodTerminationEvent(ctx context.Context, containerStatus *v1.ContainerStatus, pod *v1.Pod, scope *sentry.Scope) *sentry.Event {
+	// logger := zerolog.Ctx(ctx)
+
+	state := containerStatus.State.Terminated
+
+	if state.ExitCode == 0 {
+		// Nothing to do
+		return nil
+	}
+
+	setTagIfNotEmpty(scope, "reason", state.Reason)
+	setTagIfNotEmpty(scope, "kind", pod.Kind)
+	setTagIfNotEmpty(scope, "object_uid", string(pod.UID))
+	setTagIfNotEmpty(scope, "namespace", pod.Namespace)
+	setTagIfNotEmpty(scope, "pod_name", pod.Name)
+	setTagIfNotEmpty(scope, "container_name", containerStatus.Name)
+
+	// FIXME
+	setTagIfNotEmpty(scope, "event_source_component", "x-pod-controller")
+
+	// FIXME: build a proper event with enhancers
+	// sentryEvent := buildSentryEvent(ctx, originalEvent, scope)
+
+	message := state.Message
+	if message == "" {
+		message = fmt.Sprintf(
+			"%s: container %q",
+			state.Reason,
+			containerStatus.Name,
+		)
+	}
+
+	sentryEvent := &sentry.Event{Message: message, Level: sentry.LevelError}
+	return sentryEvent
+}
+
+func handlePodWatchEvent(ctx context.Context, event *watch.Event) {
+	logger := zerolog.Ctx(ctx)
+
+	eventObjectRaw := event.Object
+	// Watch event type: Added, Delete, Bookmark...
+	if event.Type != watch.Modified {
+		logger.Debug().Msgf("Skipping a pod watch event of type %s", event.Type)
+		return
+	}
+
+	objectKind := eventObjectRaw.GetObjectKind()
+	podObject, ok := eventObjectRaw.(*v1.Pod)
+	if !ok {
+		logger.Warn().Msgf("Skipping an event of kind '%v' because it cannot be casted", objectKind)
+		return
+	}
+
+	logger.Debug().Msgf("PodObject: %#v", podObject)
+
+	ctx, logger = getLoggerWithTag(ctx, "namespace", podObject.GetNamespace())
+
+	hub := sentry.GetHubFromContext(ctx)
+	if hub == nil {
+		logger.Error().Msgf("Cannot get Sentry hub from context")
+		return
+	}
+
+	containerStatuses := podObject.Status.ContainerStatuses
+	for _, status := range containerStatuses {
+		state := status.State
+		if state.Terminated == nil {
+			// Ignore non-Terminated statuses
+			continue
+		}
+
+		hub.WithScope(func(scope *sentry.Scope) {
+			sentryEvent := handlePodTerminationEvent(ctx, &status, podObject, scope)
+			if sentryEvent != nil {
+				hub.CaptureEvent(sentryEvent)
+			}
+		})
+	}
+}
+
+// TODO: dedupe with events
+func watchPodsInNamespace(ctx context.Context, namespace string) (err error) {
+	logger := zerolog.Ctx(ctx)
+
+	clientset, err := getClientsetFromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	watchFunc := func(options metav1.ListOptions) (watch.Interface, error) {
+		opts := metav1.ListOptions{
+			Watch: true,
+		}
+		return clientset.CoreV1().Pods(namespace).Watch(ctx, opts)
+	}
+	logger.Debug().Msg("Getting the pod watcher...")
+	retryWatcher, err := toolsWatch.NewRetryWatcher("1", &cache.ListWatch{WatchFunc: watchFunc})
+	if err != nil {
+		return err
+	}
+
+	watchCh := retryWatcher.ResultChan()
+	defer retryWatcher.Stop()
+
+	logger.Debug().Msg("Reading from the event channel (pods)...")
+	for event := range watchCh {
+		handlePodWatchEvent(ctx, &event)
+	}
+
+	return nil
+}
+
+// TODO: dedupe with events
+func watchPodsInNamespaceForever(ctx context.Context, config *rest.Config, namespace string) error {
+	localHub := sentry.CurrentHub().Clone()
+	ctx = sentry.SetHubOnContext(ctx, localHub)
+
+	where := fmt.Sprintf("in namespace '%s'", namespace)
+	namespaceTag := namespace
+	if namespace == v1.NamespaceAll {
+		where = "in all namespaces"
+		namespaceTag = "__all__"
+	}
+
+	// Attach the "namespace" tag to logger
+	ctx, logger := getLoggerWithTag(ctx, "namespace", namespaceTag)
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return err
+	}
+
+	ctx = setClientsetOnContext(ctx, clientset)
+
+	for {
+		if err := watchPodsInNamespace(ctx, namespace); err != nil {
+			logger.Error().Msgf("Error while watching pods %s: %s", where, err)
+		}
+		// Note: some events might be lost when we're sleeping here
+		time.Sleep(time.Second * 1)
+	}
+}
 
 func startPodWatchers(ctx context.Context, config *rest.Config, namespaces []string) {
 	for _, namespace := range namespaces {
-		globalLogger.Debug().Msgf("TODO: starting pod watcher for namespace: %s, ctx: %v", namespace, ctx)
+
+		go watchPodsInNamespaceForever(ctx, config, namespace)
+
 	}
 }
