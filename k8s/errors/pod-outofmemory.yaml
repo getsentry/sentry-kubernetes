@@ -9,7 +9,7 @@ metadata:
 spec:
   containers:
     - image: python:3.10-alpine
-      name: pod-outofmemory
+      name: container-outofmemory
       command:
         - python
         - "-c"
