@@ -16,7 +16,7 @@ func runEnhancers(ctx context.Context, event *v1.Event, scope *sentry.Scope, sen
 	logger.Debug().Msgf("Running enhancers...")
 
 	// First, run the basic (common) enhancer
-	runCommonEnhancer(ctx, event, scope, sentryEvent)
+	runCommonEnhancer(ctx, scope, sentryEvent)
 
 	// Then, run kind-specific enhancers
 	switch event.InvolvedObject.Kind {

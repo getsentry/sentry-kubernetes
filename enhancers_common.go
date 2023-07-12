@@ -9,7 +9,6 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/rs/zerolog"
 	globalLogger "github.com/rs/zerolog/log"
-	v1 "k8s.io/api/core/v1"
 )
 
 type commonMsgPattern struct {
@@ -80,7 +79,7 @@ func matchSinglePattern(ctx context.Context, message string, pattern *commonMsgP
 	return fingerprint, true
 }
 
-func matchCommonPatterns(ctx context.Context, event *v1.Event, scope *sentry.Scope, sentryEvent *sentry.Event) error {
+func matchCommonPatterns(ctx context.Context, scope *sentry.Scope, sentryEvent *sentry.Event) error {
 	logger := zerolog.Ctx(ctx)
 	message := sentryEvent.Message
 
@@ -97,7 +96,7 @@ func matchCommonPatterns(ctx context.Context, event *v1.Event, scope *sentry.Sco
 	return nil
 }
 
-func runCommonEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope, sentryEvent *sentry.Event) error {
+func runCommonEnhancer(ctx context.Context, scope *sentry.Scope, sentryEvent *sentry.Event) error {
 	logger := zerolog.Ctx(ctx)
 
 	logger.Debug().Msgf("Running the common enhancer, event message: %q", sentryEvent.Message)
@@ -111,6 +110,6 @@ func runCommonEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope
 	}
 
 	// Match common message patterns
-	matchCommonPatterns(ctx, event, scope, sentryEvent)
+	matchCommonPatterns(ctx, scope, sentryEvent)
 	return nil
 }
