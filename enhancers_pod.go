@@ -82,8 +82,9 @@ func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope, s
 		// If the pod is controlled by something (e.g. a replicaset), group all issues
 		// for all controlled pod together.
 		owner := pod.OwnerReferences[0]
-		sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, owner.Name)
+		sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, owner.Kind, owner.Name)
 	} else {
+		// Standalone pod => most probably it has a unique name
 		sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, podName)
 	}
 
