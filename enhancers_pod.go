@@ -13,23 +13,32 @@ import (
 
 const breadcrumbLimit = 20
 
-func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope, sentryEvent *sentry.Event) error {
+func runPodEnhancer(ctx context.Context, podMeta *v1.ObjectReference, cachedObject interface{}, scope *sentry.Scope, sentryEvent *sentry.Event) error {
 	logger := zerolog.Ctx(ctx)
+
+	logger.Debug().Msgf("Running the pod enhancer")
 
 	clientset, err := getClientsetFromContext(ctx)
 	if err != nil {
 		return err
 	}
 
-	namespace := event.Namespace
-	podName := event.InvolvedObject.Name
+	namespace := podMeta.Namespace
+	podName := podMeta.Name
 	opts := metav1.GetOptions{}
 
-	logger.Debug().Msgf("Fetching pod data")
-	// FIXME: this can probably be cached if we use NewSharedInformerFactory
-	pod, err := clientset.CoreV1().Pods(namespace).Get(context.Background(), podName, opts)
-	if err != nil {
-		return err
+	cachedPod, _ := cachedObject.(*v1.Pod)
+	var pod *v1.Pod
+	if cachedPod == nil {
+		logger.Debug().Msgf("Fetching pod data")
+		// FIXME: this can probably be cached if we use NewSharedInformerFactory
+		pod, err = clientset.CoreV1().Pods(namespace).Get(context.Background(), podName, opts)
+		if err != nil {
+			return err
+		}
+	} else {
+		logger.Debug().Msgf("Reusing the available pod object")
+		pod = cachedPod
 	}
 
 	// Clean-up the object
@@ -61,14 +70,8 @@ func runPodEnhancer(ctx context.Context, event *v1.Event, scope *sentry.Scope, s
 		}, breadcrumbLimit)
 	}
 
-	// Adjust message
-	var message string
-	if sentryEvent.Message == "" {
-		message = event.Message
-	} else {
-		// Message may be already set by previous enhancers
-		message = sentryEvent.Message
-	}
+	message := sentryEvent.Message
+
 	if !strings.Contains(message, podName) {
 		sentryEvent.Message = fmt.Sprintf("%s: %s", podName, message)
 	}

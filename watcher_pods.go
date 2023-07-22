@@ -21,6 +21,7 @@ func handlePodTerminationEvent(ctx context.Context, containerStatus *v1.Containe
 
 	state := containerStatus.State.Terminated
 
+	fmt.Printf(">> state: %#v\n", state)
 	if state.ExitCode == 0 {
 		// Nothing to do
 		return nil
@@ -45,9 +46,18 @@ func handlePodTerminationEvent(ctx context.Context, containerStatus *v1.Containe
 		)
 	}
 
-	// FIXME: build a proper event with enhancers
-	// sentryEvent := buildSentryEvent(ctx, originalEvent, scope)
+	sentryEvent := buildSentryEventFromPodTerminationEvent(ctx, pod, message, scope)
+	return sentryEvent
+}
+
+func buildSentryEventFromPodTerminationEvent(ctx context.Context, pod *v1.Pod, message string, scope *sentry.Scope) *sentry.Event {
 	sentryEvent := &sentry.Event{Message: message, Level: sentry.LevelError}
+	objectRef := &v1.ObjectReference{
+		Kind:      "Pod",
+		Name:      pod.Name,
+		Namespace: pod.Namespace,
+	}
+	runEnhancers(ctx, objectRef, pod, scope, sentryEvent)
 	return sentryEvent
 }
 
@@ -68,9 +78,14 @@ func handlePodWatchEvent(ctx context.Context, event *watch.Event) {
 		return
 	}
 
-	logger.Debug().Msgf("PodObject: %#v", podObject)
+	logger.Trace().Msgf("Pod Object received: %#v", podObject)
 
 	ctx, logger = getLoggerWithTag(ctx, "namespace", podObject.GetNamespace())
+
+	if podObject.DeletionTimestamp != nil {
+		logger.Debug().Msgf("Pod is about to be deleted; ignoring state modifications")
+		return
+	}
 
 	hub := sentry.GetHubFromContext(ctx)
 	if hub == nil {
@@ -85,6 +100,8 @@ func handlePodWatchEvent(ctx context.Context, event *watch.Event) {
 			// Ignore non-Terminated statuses
 			continue
 		}
+
+		fmt.Printf(">> container status: %#v\n", status)
 
 		hub.WithScope(func(scope *sentry.Scope) {
 			sentryEvent := handlePodTerminationEvent(ctx, &status, podObject, scope)
@@ -110,7 +127,7 @@ func watchPodsInNamespace(ctx context.Context, namespace string) (err error) {
 		}
 		return clientset.CoreV1().Pods(namespace).Watch(ctx, opts)
 	}
-	logger.Debug().Msg("Getting the pod watcher...")
+	logger.Debug().Msg("Getting the pod watcher")
 	retryWatcher, err := toolsWatch.NewRetryWatcher("1", &cache.ListWatch{WatchFunc: watchFunc})
 	if err != nil {
 		return err
@@ -119,7 +136,7 @@ func watchPodsInNamespace(ctx context.Context, namespace string) (err error) {
 	watchCh := retryWatcher.ResultChan()
 	defer retryWatcher.Stop()
 
-	logger.Debug().Msg("Reading from the event channel (pods)...")
+	logger.Debug().Msg("Reading from the event channel (pods)")
 	for event := range watchCh {
 		handlePodWatchEvent(ctx, &event)
 	}

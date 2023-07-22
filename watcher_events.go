@@ -17,7 +17,7 @@ import (
 	toolsWatch "k8s.io/client-go/tools/watch"
 )
 
-func processGeneralEvent(ctx context.Context, eventObject *v1.Event, scope *sentry.Scope) *sentry.Event {
+func handleGeneralEvent(ctx context.Context, eventObject *v1.Event, scope *sentry.Scope) *sentry.Event {
 	logger := zerolog.Ctx(ctx)
 
 	logger.Debug().Msgf("EventObject: %#v", eventObject)
@@ -59,11 +59,22 @@ func processGeneralEvent(ctx context.Context, eventObject *v1.Event, scope *sent
 		scope.SetExtra("~ Misc Event Fields", kubeEvent)
 	}
 
-	sentryEvent := buildSentryEvent(ctx, originalEvent, scope)
+	sentryEvent := buildSentryEventFromGeneralEvent(ctx, originalEvent, scope)
 	return sentryEvent
 }
 
-func handleEventWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1.Time) {
+func buildSentryEventFromGeneralEvent(ctx context.Context, event *v1.Event, scope *sentry.Scope) *sentry.Event {
+	sentryEvent := &sentry.Event{Message: event.Message, Level: sentry.LevelError}
+	objectRef := &v1.ObjectReference{
+		Kind:      event.InvolvedObject.Kind,
+		Name:      event.InvolvedObject.Name,
+		Namespace: event.InvolvedObject.Namespace,
+	}
+	runEnhancers(ctx, objectRef, nil, scope, sentryEvent)
+	return sentryEvent
+}
+
+func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1.Time) {
 	logger := zerolog.Ctx(ctx)
 
 	eventObjectRaw := event.Object
@@ -79,6 +90,8 @@ func handleEventWatchEvent(ctx context.Context, event *watch.Event, cutoffTime m
 		logger.Warn().Msgf("Skipping an event of kind '%v' because it cannot be casted", objectKind)
 		return
 	}
+
+	defer addEventToBuffer(eventObject)
 
 	namespace := eventObject.Namespace
 	if namespace != "" {
@@ -98,7 +111,6 @@ func handleEventWatchEvent(ctx context.Context, event *watch.Event, cutoffTime m
 
 	if eventObject.Type == v1.EventTypeNormal {
 		logger.Debug().Msgf("Skipping an event of type %s", eventObject.Type)
-		addEventToBuffer(eventObject)
 		return
 	}
 
@@ -118,13 +130,11 @@ func handleEventWatchEvent(ctx context.Context, event *watch.Event, cutoffTime m
 		return
 	}
 	hub.WithScope(func(scope *sentry.Scope) {
-		sentryEvent := processGeneralEvent(ctx, eventObject, scope)
+		sentryEvent := handleGeneralEvent(ctx, eventObject, scope)
 		if sentryEvent != nil {
 			hub.CaptureEvent(sentryEvent)
 		}
 	})
-
-	addEventToBuffer(eventObject)
 }
 
 func watchEventsInNamespace(ctx context.Context, namespace string, watchSince time.Time) (err error) {
@@ -141,7 +151,7 @@ func watchEventsInNamespace(ctx context.Context, namespace string, watchSince ti
 		}
 		return clientset.CoreV1().Events(namespace).Watch(ctx, opts)
 	}
-	logger.Debug().Msg("Getting the event watcher...")
+	logger.Debug().Msg("Getting the event watcher")
 	retryWatcher, err := toolsWatch.NewRetryWatcher("1", &cache.ListWatch{WatchFunc: watchFunc})
 	if err != nil {
 		return err
@@ -152,9 +162,9 @@ func watchEventsInNamespace(ctx context.Context, namespace string, watchSince ti
 
 	watchSinceWrapped := metav1.Time{Time: watchSince}
 
-	logger.Debug().Msg("Reading from the event channel (events)...")
+	logger.Debug().Msg("Reading from the event channel (events)")
 	for event := range watchCh {
-		handleEventWatchEvent(ctx, &event, watchSinceWrapped)
+		handleWatchEvent(ctx, &event, watchSinceWrapped)
 	}
 
 	return nil
@@ -192,10 +202,10 @@ func watchEventsInNamespaceForever(ctx context.Context, config *rest.Config, nam
 	ctx = setClientsetOnContext(ctx, clientset)
 
 	if isTruthy(os.Getenv("SENTRY_K8S_MONITOR_CRONJOBS")) {
-		logger.Info().Msgf("Enabling CronJob monitoring...")
+		logger.Info().Msgf("Enabling CronJob monitoring")
 		go startCronJobInformer(ctx, namespace)
 	} else {
-		logger.Info().Msgf("CronJob monitoring is disabled.")
+		logger.Info().Msgf("CronJob monitoring is disabled")
 	}
 
 	for {

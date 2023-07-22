@@ -1,13 +1,11 @@
 package main
 
 import (
-	"context"
 	"os"
 	"strings"
 
 	"github.com/getsentry/sentry-go"
 	globalLogger "github.com/rs/zerolog/log"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
 )
 
@@ -86,12 +84,6 @@ func setGlobalSentryTags() {
 			setTagIfNotEmpty(scope, tagKey, value)
 		}
 	}
-}
-
-func buildSentryEvent(ctx context.Context, event *v1.Event, scope *sentry.Scope) *sentry.Event {
-	sentryEvent := &sentry.Event{Message: event.Message, Level: sentry.LevelError}
-	runEnhancers(ctx, event, scope, sentryEvent)
-	return sentryEvent
 }
 
 func setTagIfNotEmpty(scope *sentry.Scope, key string, value string) {

@@ -7,9 +7,9 @@ upload-image-kind: docker-build
 .PHONY: upload-image-kind
 
 test:
-	go test -count=1 ./...
+	go test -count=1 .
 .PHONY: test
 
 build:
-	go build ./...
+	go build .
 .PHONY: build

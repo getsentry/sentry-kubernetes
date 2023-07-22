@@ -8,8 +8,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-func runEnhancers(ctx context.Context, event *v1.Event, scope *sentry.Scope, sentryEvent *sentry.Event) {
-	involvedObject := fmt.Sprintf("%s/%s", event.InvolvedObject.Kind, event.InvolvedObject.Name)
+func runEnhancers(ctx context.Context, objectRef *v1.ObjectReference, cachedObject interface{}, scope *sentry.Scope, sentryEvent *sentry.Event) {
+	involvedObject := fmt.Sprintf("%s/%s", objectRef.Kind, objectRef.Name)
 	ctx, logger := getLoggerWithTag(ctx, "object", involvedObject)
 
 	var err error
@@ -19,9 +19,9 @@ func runEnhancers(ctx context.Context, event *v1.Event, scope *sentry.Scope, sen
 	runCommonEnhancer(ctx, scope, sentryEvent)
 
 	// Then, run kind-specific enhancers
-	switch event.InvolvedObject.Kind {
+	switch objectRef.Kind {
 	case "Pod":
-		err = runPodEnhancer(ctx, event, scope, sentryEvent)
+		err = runPodEnhancer(ctx, objectRef, cachedObject, scope, sentryEvent)
 	}
 
 	if err != nil {
