@@ -34,8 +34,12 @@ func handlePodTerminationEvent(ctx context.Context, containerStatus *v1.Containe
 	setTagIfNotEmpty(scope, "pod_name", pod.Name)
 	setTagIfNotEmpty(scope, "container_name", containerStatus.Name)
 
-	// FIXME
+	// FIXME: we don't have a proper controller at this point, so inventing a new one
 	setTagIfNotEmpty(scope, "event_source_component", "x-pod-controller")
+
+	if containerStatusJson, err := prettyJson(containerStatus); err == nil {
+		scope.SetExtra("Container Status", containerStatusJson)
+	}
 
 	message := state.Message
 	if message == "" {
@@ -157,7 +161,8 @@ func watchPodsInNamespaceForever(ctx context.Context, config *rest.Config, names
 	}
 
 	// Attach the "namespace" tag to logger
-	ctx, logger := getLoggerWithTag(ctx, "namespace", namespaceTag)
+	ctx, _ = getLoggerWithTag(ctx, "namespace", namespaceTag)
+	ctx, logger := getLoggerWithTag(ctx, "watcher", "pods")
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {

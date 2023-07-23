@@ -10,7 +10,7 @@ import (
 // TODO: check if we even need this if we use NewSharedInformerFactory for
 // watching events.
 
-const bufferSize = 200
+const bufferSize = 1000
 
 var mu sync.RWMutex
 

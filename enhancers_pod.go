@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/rs/zerolog"
@@ -71,10 +70,7 @@ func runPodEnhancer(ctx context.Context, podMeta *v1.ObjectReference, cachedObje
 	}
 
 	message := sentryEvent.Message
-
-	if !strings.Contains(message, podName) {
-		sentryEvent.Message = fmt.Sprintf("%s: %s", podName, message)
-	}
+	sentryEvent.Message = fmt.Sprintf("%s: %s", podName, sentryEvent.Message)
 
 	// Adjust fingerprint
 	if len(sentryEvent.Fingerprint) == 0 {
