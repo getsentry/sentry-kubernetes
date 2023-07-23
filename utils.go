@@ -41,6 +41,10 @@ func removeDuplicates(slice []string) []string {
 }
 
 func getLoggerWithTag(ctx context.Context, key string, value string) (context.Context, *zerolog.Logger) {
+	return getLoggerWithTags(ctx, map[string]string{key: value})
+}
+
+func getLoggerWithTags(ctx context.Context, tags map[string]string) (context.Context, *zerolog.Logger) {
 	logger := zerolog.Ctx(ctx)
 	if logger == nil ||
 		logger == zerolog.DefaultContextLogger ||
@@ -48,9 +52,15 @@ func getLoggerWithTag(ctx context.Context, key string, value string) (context.Co
 		// Use the global logger if nothing was set on the context
 		logger = &globalLogger.Logger
 	}
-	extendedLogger := (logger.With().
-		Str(key, value).
-		Logger())
+
+	loggerContext := logger.With()
+	for key, value := range tags {
+		if key != "" {
+			loggerContext = loggerContext.Str(key, value)
+		}
+	}
+
+	extendedLogger := loggerContext.Logger()
 	ctx = extendedLogger.WithContext(ctx)
 	return ctx, &extendedLogger
 }

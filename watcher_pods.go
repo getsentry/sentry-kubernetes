@@ -161,8 +161,13 @@ func watchPodsInNamespaceForever(ctx context.Context, config *rest.Config, names
 	}
 
 	// Attach the "namespace" tag to logger
-	ctx, _ = getLoggerWithTag(ctx, "namespace", namespaceTag)
-	ctx, logger := getLoggerWithTag(ctx, "watcher", "pods")
+	ctx, logger := getLoggerWithTags(
+		ctx,
+		map[string]string{
+			"namespace": namespaceTag,
+			"watcher":   "pods",
+		},
+	)
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {

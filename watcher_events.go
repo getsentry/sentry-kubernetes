@@ -181,9 +181,14 @@ func watchEventsInNamespaceForever(ctx context.Context, config *rest.Config, nam
 		namespaceTag = "__all__"
 	}
 
-	// Attach the "namespace" tag to logger
-	ctx, _ = getLoggerWithTag(ctx, "namespace", namespaceTag)
-	ctx, logger := getLoggerWithTag(ctx, "watcher", "events")
+	// Attach the "namespace" and "watcher" tags to logger
+	ctx, logger := getLoggerWithTags(
+		ctx,
+		map[string]string{
+			"namespace": namespaceTag,
+			"watcher":   "events",
+		},
+	)
 
 	watchFromBeginning := isTruthy(os.Getenv("SENTRY_K8S_WATCH_HISTORICAL"))
 	var watchSince time.Time
