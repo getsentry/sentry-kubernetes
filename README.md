@@ -53,3 +53,4 @@ If you don't want to report certain kinds of events to Sentry, you can configure
 
 - For pod-related events: fetch last log lines and displaying them as breadcrumbs or stacktrace.
 - If GKE integration enabled: provide links to Google Logging.
+- Automatic cron monitoring instrumention of Kubernetes CronJobs.
