@@ -17,6 +17,8 @@ import (
 	toolsWatch "k8s.io/client-go/tools/watch"
 )
 
+const eventsWatcherName = "events"
+
 func handleGeneralEvent(ctx context.Context, eventObject *v1.Event, scope *sentry.Scope) *sentry.Event {
 	logger := zerolog.Ctx(ctx)
 
@@ -130,6 +132,7 @@ func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1
 		return
 	}
 	hub.WithScope(func(scope *sentry.Scope) {
+		setWatcherTag(scope, eventsWatcherName)
 		sentryEvent := handleGeneralEvent(ctx, eventObject, scope)
 		if sentryEvent != nil {
 			hub.CaptureEvent(sentryEvent)
@@ -186,7 +189,7 @@ func watchEventsInNamespaceForever(ctx context.Context, config *rest.Config, nam
 		ctx,
 		map[string]string{
 			"namespace": namespaceTag,
-			"watcher":   "events",
+			"watcher":   eventsWatcherName,
 		},
 	)
 

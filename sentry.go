@@ -91,3 +91,7 @@ func setTagIfNotEmpty(scope *sentry.Scope, key string, value string) {
 		scope.SetTag(key, value)
 	}
 }
+
+func setWatcherTag(scope *sentry.Scope, watcherName string) {
+	scope.SetTag("watcher_name", watcherName)
+}

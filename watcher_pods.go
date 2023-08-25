@@ -16,6 +16,8 @@ import (
 	toolsWatch "k8s.io/client-go/tools/watch"
 )
 
+const podsWatcherName = "pods"
+
 func handlePodTerminationEvent(ctx context.Context, containerStatus *v1.ContainerStatus, pod *v1.Pod, scope *sentry.Scope) *sentry.Event {
 	// logger := zerolog.Ctx(ctx)
 
@@ -108,6 +110,7 @@ func handlePodWatchEvent(ctx context.Context, event *watch.Event) {
 		fmt.Printf(">> container status: %#v\n", status)
 
 		hub.WithScope(func(scope *sentry.Scope) {
+			setWatcherTag(scope, podsWatcherName)
 			sentryEvent := handlePodTerminationEvent(ctx, &status, podObject, scope)
 			if sentryEvent != nil {
 				hub.CaptureEvent(sentryEvent)
@@ -165,7 +168,7 @@ func watchPodsInNamespaceForever(ctx context.Context, config *rest.Config, names
 		ctx,
 		map[string]string{
 			"namespace": namespaceTag,
-			"watcher":   "pods",
+			"watcher":   podsWatcherName,
 		},
 	)
 
