@@ -189,7 +189,7 @@ func (igke *IntegrationGKE) getLinkToPodLogs(podName string, namespace string) (
 	}
 
 	link := ("https://console.cloud.google.com/logs/query;query=" +
-		"resource.type%%3D%%22k8s_container%%22%%0A" +
+		fmt.Sprintf("resource.type%%3D%%22k8s_container%%22%%0A") +
 		fmt.Sprintf("resource.labels.project_id%%3D%%22%s%%22%%0A", projectName) +
 		fmt.Sprintf("resource.labels.location%%3D%%22%s%%22%%0A", clusterLocation) +
 		fmt.Sprintf("resource.labels.cluster_name%%3D%%22%s%%22%%0A", clusterName) +
