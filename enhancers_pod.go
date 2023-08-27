@@ -87,5 +87,7 @@ func runPodEnhancer(ctx context.Context, podMeta *v1.ObjectReference, cachedObje
 		sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, podName)
 	}
 
+	addPodLogLinkToGKEContext(ctx, scope, podName, namespace)
+
 	return nil
 }
