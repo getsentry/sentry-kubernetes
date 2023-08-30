@@ -72,7 +72,11 @@ func runPodEnhancer(ctx context.Context, podMeta *v1.ObjectReference, cachedObje
 	message := sentryEvent.Message
 	sentryEvent.Message = fmt.Sprintf("%s: %s", podName, sentryEvent.Message)
 
-	// Adjust fingerprint
+	logger.Trace().Msgf("Current fingerprint: %v", sentryEvent.Fingerprint)
+
+	// Adjust fingerprint.
+	// If there's already a non-empty fingerprint set, we assume that it was set by
+	// another enhancer, so we don't touch it.
 	if len(sentryEvent.Fingerprint) == 0 {
 		sentryEvent.Fingerprint = []string{message}
 	}
@@ -86,6 +90,8 @@ func runPodEnhancer(ctx context.Context, podMeta *v1.ObjectReference, cachedObje
 		// Standalone pod => most probably it has a unique name
 		sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, podName)
 	}
+
+	logger.Trace().Msgf("Fingerprint after adjustment: %v", sentryEvent.Fingerprint)
 
 	addPodLogLinkToGKEContext(ctx, scope, podName, namespace)
 
