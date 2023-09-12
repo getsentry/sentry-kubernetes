@@ -29,3 +29,6 @@ sentry-kubernetes
 # virtualenv files
 .venv
 venv
+
+# Misc files
+notes.txt

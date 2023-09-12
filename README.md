@@ -46,11 +46,9 @@ If you don't want to report certain kinds of events to Sentry, you can configure
 
 ## Caveats
 
-- Pod errors (exiting with non-zero code, OOM events) are currently not tracked, because they cannot be easily seen from Event objects only. We need to watch Pod objects separately.
 - When the same event (for example, a failed readiness check) happens multiple times, Kubernetes might not report each of them individually, and instead combine them, and send with some backoff. The event message in that case will be prefixed with "(combined from similar events)" string, that we currently strip. AFAIK, there's no way to disable this batching behaviour.
 
 ### Potential Improvements
 
 - For pod-related events: fetch last log lines and displaying them as breadcrumbs or stacktrace.
-- If GKE integration enabled: provide links to Google Logging.
-- Automatic cron monitoring instrumention of Kubernetes CronJobs.
+- Automatic Sentry cron monitoring instrumentaion of Kubernetes CronJobs.
