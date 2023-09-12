@@ -58,7 +58,8 @@ func startCronJobInformer(ctx context.Context, namespace string) (err error) {
 		},
 	})
 
-	ctx, _ = context.WithCancel(context.Background())
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
 
 	factory.Start(ctx.Done())
 

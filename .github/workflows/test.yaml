@@ -1,0 +1,39 @@
+name: Test
+on:
+  push:
+    branches:
+      - master
+      - release/**
+      - test/**
+      - build/**
+  pull_request:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  test:
+    name: All
+    runs-on: ${{ matrix.os }}-latest
+    env:
+      GOFLAGS: "-mod=readonly"
+    steps:
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go }}
+      - uses: actions/checkout@v3
+      - name: Build
+        run: make build
+      - name: Vet
+        run: make vet
+      - name: Check go.mod Tidiness
+        run: make mod-tidy
+      - name: Test
+        run: make test
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        go: ["1.20"]
+        os: [ubuntu]
+      fail-fast: false
