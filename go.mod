@@ -3,7 +3,7 @@ module github.com/tonyo/sentry-kubernetes
 go 1.20
 
 require (
-	github.com/getsentry/sentry-go v0.20.0
+	github.com/getsentry/sentry-go v0.25.0
 	github.com/rs/zerolog v1.29.1
 	k8s.io/api v0.25.12
 	k8s.io/apimachinery v0.25.12

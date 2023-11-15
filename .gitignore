@@ -32,3 +32,6 @@ venv
 
 # Misc files
 notes.txt
+
+# dotenv files
+.env
