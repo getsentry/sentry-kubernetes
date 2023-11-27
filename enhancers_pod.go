@@ -48,7 +48,9 @@ func runPodEnhancer(ctx context.Context, podMeta *v1.ObjectReference, cachedObje
 
 	metadataJson, err := prettyJson(pod.ObjectMeta)
 	if err == nil {
-		scope.SetExtra("Pod Metadata", metadataJson)
+		scope.SetContext("Pod", sentry.Context{
+			"Metadata": metadataJson,
+		})
 	}
 
 	// The data will be mostly duplicated in "Pod Metadata"
@@ -81,14 +83,29 @@ func runPodEnhancer(ctx context.Context, podMeta *v1.ObjectReference, cachedObje
 		sentryEvent.Fingerprint = []string{message}
 	}
 
-	if len(pod.OwnerReferences) > 0 {
-		// If the pod is controlled by something (e.g. a replicaset), group all issues
-		// for all controlled pod together.
-		owner := pod.OwnerReferences[0]
-		sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, owner.Kind, owner.Name)
-	} else {
+	// Using finger print to group events together
+	// The pod is not owned by a higher resource
+	if len(pod.OwnerReferences) == 0 {
 		// Standalone pod => most probably it has a unique name
 		sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, podName)
+		// The pod is owned by a higher resource
+	} else {
+		// Check if pod is part of cronJob (as grandchild workload resource)
+
+		// check if a cronJob
+		var ok bool
+		if pod.OwnerReferences[0].Kind == "Job" {
+			ok, err = runCronsDataHandler(ctx, scope, pod, sentryEvent)
+			if err != nil {
+				return err
+			}
+		}
+
+		// The job is not owned by a cronJob
+		if !ok {
+			owner := pod.OwnerReferences[0]
+			sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, owner.Kind, owner.Name)
+		}
 	}
 
 	logger.Trace().Msgf("Fingerprint after adjustment: %v", sentryEvent.Fingerprint)
