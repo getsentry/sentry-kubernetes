@@ -1,5 +1,9 @@
 # sentry-kubernetes
 
+Kubernetes event reporter for Sentry.
+
+---
+
 **⚠️ Note: this is BETA software that is still in development and may contain bugs. Use it at your own risk in production environments.**
 
 **⚠️ Note: this is a new Go-based implementation of the agent. If you're looking for the documentation on the legacy Python-based implementation, [it was moved here](./py-legacy/).**
