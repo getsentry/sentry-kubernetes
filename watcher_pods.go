@@ -19,6 +19,8 @@ import (
 
 const podsWatcherName = "pods"
 
+var cronsMetaData = NewCronsMetaData()
+
 func handlePodTerminationEvent(ctx context.Context, containerStatus *v1.ContainerStatus, pod *v1.Pod, scope *sentry.Scope) *sentry.Event {
 	logger := zerolog.Ctx(ctx)
 
@@ -188,8 +190,8 @@ func watchPodsInNamespaceForever(ctx context.Context, config *rest.Config, names
 
 	// create the informers to integrate with sentry crons
 	if isTruthy(os.Getenv("SENTRY_K8S_MONITOR_CRONJOBS")) {
-		cronsInformerData := make(map[string]CronsMonitorData)
-		ctx := context.WithValue(ctx, CronsInformerDataKey{}, &cronsInformerData)
+		// cronsInformerData := make(map[string]CronsMonitorData)
+		// ctx := context.WithValue(ctx, CronsInformerDataKey{}, &cronsInformerData)
 		logger.Info().Msgf("Enabling CronJob monitoring")
 
 		go startCronsInformers(ctx, namespace)

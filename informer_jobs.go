@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 
 	"github.com/rs/zerolog"
 	batchv1 "k8s.io/api/batch/v1"
@@ -16,11 +15,6 @@ func createJobInformer(ctx context.Context, factory informers.SharedInformerFact
 	logger := zerolog.Ctx(ctx)
 
 	logger.Debug().Msgf("starting job informer\n")
-
-	val := ctx.Value(CronsInformerDataKey{})
-	if val == nil {
-		return nil, errors.New("no crons informer data struct given")
-	}
 
 	jobInformer := factory.Batch().V1().Jobs().Informer()
 

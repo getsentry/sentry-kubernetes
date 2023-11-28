@@ -1,11 +1,11 @@
 package main
 
 import (
+	"sync"
+
 	"github.com/getsentry/sentry-go"
 	batchv1 "k8s.io/api/batch/v1"
 )
-
-type CronsInformerDataKey struct{}
 
 // Struct associated with a job
 type CronsJobData struct {
@@ -25,6 +25,7 @@ func (j *CronsJobData) getCheckinId() sentry.EventID {
 
 // Struct associated with a cronJob
 type CronsMonitorData struct {
+	mutex               sync.RWMutex
 	MonitorSlug         string
 	monitorConfig       *sentry.MonitorConfig
 	JobDatas            map[string]*CronsJobData
@@ -44,6 +45,7 @@ func NewCronsMonitorData(monitorSlug string, schedule string, maxRunTime int64, 
 	}
 	monitorSchedule := sentry.CrontabSchedule(schedule)
 	return &CronsMonitorData{
+		mutex:       sync.RWMutex{},
 		MonitorSlug: monitorSlug,
 		monitorConfig: &sentry.MonitorConfig{
 			Schedule:      monitorSchedule,
@@ -57,6 +59,41 @@ func NewCronsMonitorData(monitorSlug string, schedule string, maxRunTime int64, 
 
 // Add a job to the crons monitor
 func (c *CronsMonitorData) addJob(job *batchv1.Job, checkinId sentry.EventID) error {
+	c.mutex.Lock()
 	c.JobDatas[job.Name] = NewCronsJobData(checkinId)
+	c.mutex.Unlock()
 	return nil
+}
+
+// wrapper struct over crons monitor map that
+// handles syncrhonization
+type CronsMetaData struct {
+	mutex               *sync.RWMutex
+	cronsMonitorDataMap map[string]*CronsMonitorData
+}
+
+func (c *CronsMetaData) addCronsMonitorData(cronjobName string, newCronsMonitorData *CronsMonitorData) {
+	c.mutex.Lock()
+	c.cronsMonitorDataMap[cronjobName] = newCronsMonitorData
+	c.mutex.Unlock()
+}
+
+func (c *CronsMetaData) deleteCronsMonitorData(cronjobName string) {
+	c.mutex.Lock()
+	delete(c.cronsMonitorDataMap, cronjobName)
+	c.mutex.Unlock()
+}
+
+func (c *CronsMetaData) getCronsMonitorData(cronjobName string) (*CronsMonitorData, bool) {
+	c.mutex.RLock()
+	cronsMonitorData, ok := c.cronsMonitorDataMap[cronjobName]
+	c.mutex.RUnlock()
+	return cronsMonitorData, ok
+}
+
+func NewCronsMetaData() *CronsMetaData {
+	return &CronsMetaData{
+		mutex:               &sync.RWMutex{},
+		cronsMonitorDataMap: make(map[string]*CronsMonitorData),
+	}
 }

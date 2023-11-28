@@ -23,6 +23,9 @@ const (
 	EventHandlerDelete EventHandlerType = "DELETE"
 )
 
+var cronjobInformer cache.SharedIndexInformer
+var jobInformer cache.SharedIndexInformer
+
 // Starts the crons informer which has event handlers
 // adds to the crons monitor data struct used for sending
 // checkin events to Sentry
@@ -41,12 +44,12 @@ func startCronsInformers(ctx context.Context, namespace string) error {
 	)
 
 	// create the cronjob informer
-	cronjobInformer, err := createCronjobInformer(ctx, factory, namespace)
+	cronjobInformer, err = createCronjobInformer(ctx, factory, namespace)
 	if err != nil {
 		return err
 	}
 	// create the job informer
-	jobInformer, err := createJobInformer(ctx, factory, namespace)
+	jobInformer, err = createJobInformer(ctx, factory, namespace)
 	if err != nil {
 		return err
 	}
@@ -74,17 +77,6 @@ func startCronsInformers(ctx context.Context, namespace string) error {
 // checkin events during the start and end of a job (along with the exit status)
 func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerType EventHandlerType) error {
 
-	// Query the crons informer data
-	val := ctx.Value(CronsInformerDataKey{})
-	if val == nil {
-		return errors.New("no crons informer data struct given")
-	}
-	var cronsInformerData *map[string]CronsMonitorData
-	var ok bool
-	if cronsInformerData, ok = val.(*map[string]CronsMonitorData); !ok {
-		return errors.New("cannot convert cronsInformerData value from context")
-	}
-
 	// Try to find the cronJob name that owns the job
 	// in order to get the crons monitor data
 	if len(job.OwnerReferences) == 0 {
@@ -94,7 +86,7 @@ func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerTy
 	if !*cronjobRef.Controller || cronjobRef.Kind != "CronJob" {
 		return errors.New("job does not have cronjob reference")
 	}
-	cronsMonitorData, ok := (*cronsInformerData)[cronjobRef.Name]
+	cronsMonitorData, ok := cronsMetaData.getCronsMonitorData(cronjobRef.Name)
 	if !ok {
 		return errors.New("cannot find cronJob data")
 	}
@@ -112,7 +104,7 @@ func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerTy
 }
 
 // sends the checkin event to sentry crons for when a job starts
-func checkinJobStarting(ctx context.Context, job *batchv1.Job, cronsMonitorData CronsMonitorData) error {
+func checkinJobStarting(ctx context.Context, job *batchv1.Job, cronsMonitorData *CronsMonitorData) error {
 
 	logger := zerolog.Ctx(ctx)
 
@@ -137,7 +129,7 @@ func checkinJobStarting(ctx context.Context, job *batchv1.Job, cronsMonitorData 
 }
 
 // sends the checkin event to sentry crons for when a job ends
-func checkinJobEnding(ctx context.Context, job *batchv1.Job, cronsMonitorData CronsMonitorData) error {
+func checkinJobEnding(ctx context.Context, job *batchv1.Job, cronsMonitorData *CronsMonitorData) error {
 
 	logger := zerolog.Ctx(ctx)
 	// do not check in to exit if there are still active pods
