@@ -61,8 +61,6 @@ jobs:
           platforms: "${{ matrix.arch }}"
           push: ${{ github.ref == 'refs/heads/master' }}
           tags: |
-            getsentry/sentry-kubernetes:latest
-            getsentry/sentry-kubernetes:${{ github.sha }}
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ github.sha }}
 
