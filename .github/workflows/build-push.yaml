@@ -13,6 +13,7 @@ on:
   push:
     branches:
       - main
+      - master
       - test/**
       - build/**
 
@@ -58,7 +59,7 @@ jobs:
         with:
           context: .
           platforms: "${{ matrix.arch }}"
-          push: ${{ github.ref == 'refs/heads/main' }}
+          push: ${{ github.ref == 'refs/heads/master' }}
           tags: |
             getsentry/sentry-kubernetes:latest
             getsentry/sentry-kubernetes:${{ github.sha }}
