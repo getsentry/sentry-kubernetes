@@ -57,74 +57,74 @@ If you don't want to report certain kinds of events to Sentry, you can configure
 
 1. Install necessary dependencies to run Kubernetes locally
     1. Install `docker` and start the docker daemon
-        
+
         [https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
-        
+
         `docker` is a service that manages containers and is used by Kubernetes to create nodes (since `kind` actually create Kubernetes “nodes” as docker containers rather than VMs)
-        
+
     2. Install `kind` and add it to PATH
-        
+
         [https://kind.sigs.k8s.io/docs/user/quick-start/](https://kind.sigs.k8s.io/docs/user/quick-start/)
-        
+
         `kind` is a tool for running local Kubernetes clusters and we use it here for testing. The container runtime used by it is `containerd`, which is the same runtime used now by Docker.
-        
+
     3.  Install `kubectl`, which is the command line tool we use to interact with Kubernetes clusters ran locally by `kind`
-        
+
         [https://kubernetes.io/docs/tasks/tools/](https://kubernetes.io/docs/tasks/tools/)
-        
+
 2. Run Kubernetes cluster locally for development purposes
     1. Create a Kubernetes cluster with `kind` using the command (the cluster name is “kind” by default)
-    
+
     `kind create cluster`
-    
+
      b.  Output information about the created cluster named “kind” or some cluster name you have chosen using the following command (replacing `<cluster name>` with `kind` if default used)
-    
+
     `kubectl cluster-info --context kind-<cluster name>`
-    
+
     You should see an output similar to the following:
-    
+
     ```bash
     Kubernetes control plane is running at https://127.0.0.1:61502
     CoreDNS is running at https://127.0.0.1:61502/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
     ```
-    
+
 3. Run the `sentry-kubernetes` Go module (which must be performed after the Kubernetes cluster is already running because the module requires the `kubeconfig` file)
     1. Clone the `sentry-kubernetes` repository
-    
-    `git clone https://github.com/tonyo/sentry-kubernetes.git`
-    
+
+    `git clone https://github.com/getsentry/sentry-kubernetes.git`
+
      b.  Pass a valid Sentry DSN to the an environment variable named `SENTRY_DSN` ([https://docs.sentry.io/product/sentry-basics/concepts/dsn-explainer/](https://docs.sentry.io/product/sentry-basics/concepts/dsn-explainer/))
-    
+
      c. At the root of the repository directory, build the Go module with the command
-    
+
     `make build`
-    
+
      d. Run the module outside of the k8s cluster by executing the command
-    
+
     `go run .`
-    
+
     which now starts up the process that automatically detects the cluster configuration in order to detect events
-    
+
 4. Add error-producing pods to test event capturing
     1. Create resources (e.g. pods or deployments) using existing manifests meant to produce errors to be captured by `sentry-kubernetes`. For example, we can apply the manifest for a pod that exhibits crash loop behavior with the command
-    
+
     `kubectl apply -f ./k8s/errors/pod-crashloop.yaml`
-    
+
      b. Check that the pod is created using the command
-    
+
     `kubectl get pods`
-    
+
     which should produce an output similar to the following:
-    
+
     ```bash
     NAME            READY   STATUS             RESTARTS       AGE
     pod-crashloop   0/1     CrashLoopBackOff   32 (33s ago)   3h10m
     ```
-    
+
     Notice that the Status is `CrashLoopBackOff`, which is the intended state for our purpose
-    
+
     c. Check that the `sentry-kubernetes` process capture this crash loop error by checking for the an output similar to the following:
-    
+
     ```bash
     [Sentry] 2023/11/08 12:07:53 Using release from Git: abc123
     12:07PM INF Auto-detecting cluster configuration...

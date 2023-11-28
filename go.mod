@@ -1,4 +1,4 @@
-module github.com/tonyo/sentry-kubernetes
+module github.com/getsentry/sentry-kubernetes
 
 go 1.20
 

@@ -37,11 +37,11 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@f03ac48505955848960e80bbb68046aa35c7b9e7 # v2.4.1
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
-        with:
-          username: tonyo
-          password: ${{ secrets.DOCKER_PASSWORD }}
+      # - name: Log in to Docker Hub
+      #   uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+      #   with:
+      #     username: sentrybuilder
+      #     password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Log in to the Container registry
         uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
@@ -60,8 +60,8 @@ jobs:
           platforms: "${{ matrix.arch }}"
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: |
-            tonyo/sentry-kubernetes:latest
-            tonyo/sentry-kubernetes:${{ github.sha }}
+            getsentry/sentry-kubernetes:latest
+            getsentry/sentry-kubernetes:${{ github.sha }}
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ github.sha }}
 
@@ -73,5 +73,5 @@ jobs:
   #     - name: Generate SBOM
   #       uses: anchore/sbom-action@07978da4bdb4faa726e52dfc6b1bed63d4b56479 # v0.13.3
   #       with:
-  #         image: tonyo/sentry-kubernetes:latest
+  #         image: getsentry/sentry-kubernetes:latest
   #         format: text
