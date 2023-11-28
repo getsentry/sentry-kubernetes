@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: pod-outofmemory
+    type: test-pod
+  name: pod-outofmemory
+spec:
+  containers:
+    - image: python:3.10-alpine
+      name: container-outofmemory
+      command:
+        - python
+        - "-c"
+        - |
+          import os, resource, time
+
+          ar = bytearray(0)
+          while True:
+            print(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+            ar += bytearray(10 ** 10)
+            time.sleep(0.5)
+      resources:
+        requests:
+          cpu: 100m
+          memory: 10Mi
+        limits:
+          cpu: 100m
+          memory: 10Mi
+  restartPolicy: Always
