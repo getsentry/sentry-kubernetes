@@ -60,8 +60,8 @@ func NewCronsMonitorData(monitorSlug string, schedule string, maxRunTime int64, 
 // Add a job to the crons monitor
 func (c *CronsMonitorData) addJob(job *batchv1.Job, checkinId sentry.EventID) error {
 	c.mutex.Lock()
+	defer c.mutex.Unlock()
 	c.JobDatas[job.Name] = NewCronsJobData(checkinId)
-	c.mutex.Unlock()
 	return nil
 }
 
@@ -74,20 +74,20 @@ type CronsMetaData struct {
 
 func (c *CronsMetaData) addCronsMonitorData(cronjobName string, newCronsMonitorData *CronsMonitorData) {
 	c.mutex.Lock()
+	defer c.mutex.Unlock()
 	c.cronsMonitorDataMap[cronjobName] = newCronsMonitorData
-	c.mutex.Unlock()
 }
 
 func (c *CronsMetaData) deleteCronsMonitorData(cronjobName string) {
 	c.mutex.Lock()
+	defer c.mutex.Unlock()
 	delete(c.cronsMonitorDataMap, cronjobName)
-	c.mutex.Unlock()
 }
 
 func (c *CronsMetaData) getCronsMonitorData(cronjobName string) (*CronsMonitorData, bool) {
 	c.mutex.RLock()
+	defer c.mutex.RUnlock()
 	cronsMonitorData, ok := c.cronsMonitorDataMap[cronjobName]
-	c.mutex.RUnlock()
 	return cronsMonitorData, ok
 }
 
