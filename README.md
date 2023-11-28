@@ -1,6 +1,10 @@
 # sentry-kubernetes
 
-Yet another Sentry Kubernetes agent (should it be called "YASKA"?)
+**⚠️ Note: this is a new Go-based implementation of the agent. If you're looking for the documentation on the legacy Python-based implementation, [it was moved here](./py-legacy/).**
+
+---
+
+Errors and warnings in Kubernetes often go unnoticed by operators. Even when they are checked they are hard to read and understand in the context of what else is going on in the cluster. `sentry-kubernetes` is a small container you launch inside your Kubernetes cluster that will send errors and warnings to Sentry where they will be cleanly presented and intelligently grouped. Typical Sentry features such as notifications can then be used to help operation and developer visibility.
 
 ## Configuration
 
