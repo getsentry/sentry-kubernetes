@@ -11,7 +11,7 @@ import (
 
 func beforeSend(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
 	// Update SDK info
-	event.Sdk.Name = "tonyo.sentry-kubernetes"
+	event.Sdk.Name = "getsentry.sentry-kubernetes"
 	event.Sdk.Version = version
 
 	// Clear modules/packages

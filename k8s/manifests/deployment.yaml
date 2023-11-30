@@ -17,7 +17,7 @@ spec:
         app: sentry-kubernetes
     spec:
       containers:
-        - image: tonyo/sentry-kubernetes:b7bf56753286880bb47a9caaa8621a3bf6c6b4d5
+        - image: getsentry/sentry-kubernetes:b7bf56753286880bb47a9caaa8621a3bf6c6b4d5
           name: sentry-kubernetes
           env:
             - name: SENTRY_K8S_LOG_LEVEL
