@@ -10,9 +10,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-var checkinMargin int64 = 1
-var maxRunTimeSlack int64 = 3
-
 func createCronjobInformer(ctx context.Context, factory informers.SharedInformerFactory, namespace string) (cache.SharedIndexInformer, error) {
 
 	logger := zerolog.Ctx(ctx)
@@ -30,7 +27,7 @@ func createCronjobInformer(ctx context.Context, factory informers.SharedInformer
 		if ok {
 			logger.Debug().Msgf("cronJob %s already exists in the crons informer data struct...\n", cronjob.Name)
 		} else {
-			cronsMetaData.addCronsMonitorData(cronjob.Name, NewCronsMonitorData(cronjob.Name, cronjob.Spec.Schedule, checkinMargin, maxRunTimeSlack, cronjob.Spec.JobTemplate.Spec.Completions))
+			cronsMetaData.addCronsMonitorData(cronjob.Name, NewCronsMonitorData(cronjob.Name, cronjob.Spec.Schedule, cronjob.Spec.JobTemplate.Spec.Completions))
 		}
 	}
 

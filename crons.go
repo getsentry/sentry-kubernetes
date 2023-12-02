@@ -73,8 +73,9 @@ func startCronsInformers(ctx context.Context, namespace string) error {
 	return nil
 }
 
-// Starts the jobs informer with event handlers that trigger
-// checkin events during the start and end of a job (along with the exit status)
+// Captures sentry crons checkin event if appropriate
+// by checking the job status to determine if the job just created pod (job starting)
+// or if the job exited
 func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerType EventHandlerType) error {
 
 	// Try to find the cronJob name that owns the job
@@ -99,7 +100,7 @@ func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerTy
 		return nil
 	} else if job.Status.Failed > 0 || job.Status.Succeeded > 0 {
 		checkinJobEnding(ctx, job, cronsMonitorData)
-		return nil // Job ran successfully
+		return nil // finished
 	}
 	return nil
 }

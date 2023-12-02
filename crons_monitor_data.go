@@ -33,7 +33,7 @@ type CronsMonitorData struct {
 }
 
 // Constructor for cronsMonitorData
-func NewCronsMonitorData(monitorSlug string, schedule string, maxRunTime int64, checkinMargin int64, completions *int32) *CronsMonitorData {
+func NewCronsMonitorData(monitorSlug string, schedule string, completions *int32) *CronsMonitorData {
 
 	// Get required number of pods to complete
 	var requiredCompletions int32
@@ -48,9 +48,7 @@ func NewCronsMonitorData(monitorSlug string, schedule string, maxRunTime int64, 
 		mutex:       sync.RWMutex{},
 		MonitorSlug: monitorSlug,
 		monitorConfig: &sentry.MonitorConfig{
-			Schedule:      monitorSchedule,
-			MaxRuntime:    maxRunTime,
-			CheckInMargin: checkinMargin,
+			Schedule: monitorSchedule,
 		},
 		JobDatas:            make(map[string]*CronsJobData),
 		requiredCompletions: requiredCompletions,
