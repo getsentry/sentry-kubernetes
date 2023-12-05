@@ -1,19 +1,19 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: cronjob-basic-error
+  name: cronjob-maybe-error
   labels:
     type: test-pod
 spec:
   schedule: "* * * * *"
   jobTemplate:
     spec:
-      backoffLimit: 2
+      backoffLimit: 0
       template:
         metadata:
           labels:
             type: test-pod
-            run: cronjob-basic-error
+            run: cronjob-maybe-error
         spec:
           containers:
             - name: hello
@@ -22,5 +22,9 @@ spec:
               command:
                 - /bin/sh
                 - -c
-                - sleep 1; invalid_command
+                - |
+                  sleep 3
+                  r=$((RANDOM%2))
+                  if [ $r -eq 0 ]; then echo Hello!; fi
+                  if [ $r -eq 1 ]; then exit 1; fi
           restartPolicy: Never
