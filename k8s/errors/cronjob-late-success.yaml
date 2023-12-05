@@ -1,19 +1,18 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: cronjob-basic-error
+  name: cronjob-late-success
   labels:
     type: test-pod
 spec:
   schedule: "* * * * *"
   jobTemplate:
     spec:
-      backoffLimit: 2
       template:
         metadata:
           labels:
             type: test-pod
-            run: cronjob-basic-error
+            run: cronjob-late-success
         spec:
           containers:
             - name: hello
@@ -22,5 +21,10 @@ spec:
               command:
                 - /bin/sh
                 - -c
-                - sleep 1; invalid_command
+                - |
+                  date 
+                  MINWAIT=0
+                  MAXWAIT=60
+                  sleep $((MINWAIT+RANDOM % (MAXWAIT-MINWAIT)))
+                  echo Hello!
           restartPolicy: Never
