@@ -25,6 +25,5 @@ spec:
                 - |
                   sleep 3
                   r=$((RANDOM%2))
-                  if [ $r -eq 0 ]; then echo Hello!; fi
-                  if [ $r -eq 1 ]; then exit 1; fi
+                  if [ $r -eq 0 ]; then echo Hello!; else exit 1; fi
           restartPolicy: Never
