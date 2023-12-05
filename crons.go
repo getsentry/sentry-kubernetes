@@ -36,45 +36,46 @@ func startCronsInformers(ctx context.Context, namespace string) error {
 		return errors.New("failed to get clientset")
 	}
 
-	// create factory that will produce both the cronjob informer and job informer
+	// Create factory that will produce both the cronjob informer and job informer
 	factory := informers.NewSharedInformerFactoryWithOptions(
 		clientset,
 		5*time.Second,
 		informers.WithNamespace(namespace),
 	)
 
-	// create the cronjob informer
+	// Create the cronjob informer
 	cronjobInformer, err = createCronjobInformer(ctx, factory, namespace)
 	if err != nil {
 		return err
 	}
-	// create the job informer
+	// Create the job informer
 	jobInformer, err = createJobInformer(ctx, factory, namespace)
 	if err != nil {
 		return err
 	}
 
-	// channel to tell the factory to stop the informers
+	// Channel to tell the factory to stop the informers
 	doneChan := make(chan struct{})
 	factory.Start(doneChan)
 
-	// sync the cronjob informer cache
+	// Sync the cronjob informer cache
 	if ok := cache.WaitForCacheSync(doneChan, cronjobInformer.HasSynced); !ok {
 		return errors.New("cronjob informer failed to sync")
 	}
-	// sync the job informer cache
+	// Sync the job informer cache
 	if ok := cache.WaitForCacheSync(doneChan, jobInformer.HasSynced); !ok {
 		return errors.New("job informer failed to sync")
 	}
 
-	// wait for the channel to be closed
+	// Wait for the channel to be closed
 	<-doneChan
 
 	return nil
 }
 
-// Starts the jobs informer with event handlers that trigger
-// checkin events during the start and end of a job (along with the exit status)
+// Captures sentry crons checkin event if appropriate
+// by checking the job status to determine if the job just created pod (job starting)
+// or if the job exited
 func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerType EventHandlerType) error {
 
 	// Try to find the cronJob name that owns the job
@@ -91,19 +92,20 @@ func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerTy
 		return errors.New("cannot find cronJob data")
 	}
 
-	// capture checkin event called for by informer handler
-	if eventHandlerType == EventHandlerAdd {
+	// The job just begun so check in to start
+	if job.Status.Active == 0 && job.Status.Succeeded == 0 && job.Status.Failed == 0 {
 		// Add the job to the cronJob informer data
 		checkinJobStarting(ctx, job, cronsMonitorData)
-	} else if eventHandlerType == EventHandlerUpdate || eventHandlerType == EventHandlerDelete {
-		// Delete pod from the cronJob informer data
+	} else if job.Status.Active > 0 {
+		return nil
+	} else if job.Status.Failed > 0 || job.Status.Succeeded > 0 {
 		checkinJobEnding(ctx, job, cronsMonitorData)
+		return nil // finished
 	}
-
 	return nil
 }
 
-// sends the checkin event to sentry crons for when a job starts
+// Sends the checkin event to sentry crons for when a job starts
 func checkinJobStarting(ctx context.Context, job *batchv1.Job, cronsMonitorData *CronsMonitorData) error {
 
 	logger := zerolog.Ctx(ctx)
@@ -128,21 +130,24 @@ func checkinJobStarting(ctx context.Context, job *batchv1.Job, cronsMonitorData 
 	return nil
 }
 
-// sends the checkin event to sentry crons for when a job ends
+// Sends the checkin event to sentry crons for when a job ends
 func checkinJobEnding(ctx context.Context, job *batchv1.Job, cronsMonitorData *CronsMonitorData) error {
 
 	logger := zerolog.Ctx(ctx)
-	// do not check in to exit if there are still active pods
-	if job.Status.Active > 0 {
-		return nil
-	}
 
 	// Check desired number of pods have succeeded
 	var jobStatus sentry.CheckInStatus
-	if job.Status.Succeeded >= cronsMonitorData.requiredCompletions {
-		jobStatus = sentry.CheckInStatusOK
+
+	if job.Status.Conditions == nil {
+		return nil
 	} else {
-		jobStatus = sentry.CheckInStatusError
+		if job.Status.Conditions[0].Type == "Complete" {
+			jobStatus = sentry.CheckInStatusOK
+		} else if job.Status.Conditions[0].Type == "Failed" {
+			jobStatus = sentry.CheckInStatusError
+		} else {
+			return nil
+		}
 	}
 
 	// Get job data to retrieve the checkin ID
@@ -163,7 +168,7 @@ func checkinJobEnding(ctx context.Context, job *batchv1.Job, cronsMonitorData *C
 	return nil
 }
 
-// adds to the sentry events whenever it is associated with a cronjob
+// Adds to the sentry events whenever it is associated with a cronjob
 // so the sentry event contains the corresponding slug monitor, cronjob name, timestamp of when the cronjob began, and
 // the k8s cronjob metadata
 func runCronsDataHandler(ctx context.Context, scope *sentry.Scope, pod *v1.Pod, sentryEvent *sentry.Event) (bool, error) {
