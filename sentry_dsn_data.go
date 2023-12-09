@@ -25,12 +25,12 @@ func NewDsnData() *DsnData {
 }
 
 // return client if added successfully
-func (d *DsnData) AddClient(dsn string) (*sentry.Client, error) {
+func (d *DsnData) AddClient(options sentry.ClientOptions) (*sentry.Client, error) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 
 	// check if we already encountered this dsn
-	existingClient, ok := d.clientMap[dsn]
+	existingClient, ok := d.clientMap[options.Dsn]
 	if ok {
 		return existingClient, errors.New("a client with the given dsn already exists")
 	}
@@ -38,7 +38,7 @@ func (d *DsnData) AddClient(dsn string) (*sentry.Client, error) {
 	// create a new client for the dsn
 	newClient, err := sentry.NewClient(
 		sentry.ClientOptions{
-			Dsn:              dsn,
+			Dsn:              options.Dsn,
 			Debug:            true,
 			AttachStacktrace: true,
 		},
@@ -46,7 +46,7 @@ func (d *DsnData) AddClient(dsn string) (*sentry.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	d.clientMap[dsn] = newClient
+	d.clientMap[options.Dsn] = newClient
 
 	return newClient, nil
 }

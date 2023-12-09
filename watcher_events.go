@@ -165,7 +165,9 @@ func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1
 			}
 
 			if client == nil {
-				client, err = dsnData.AddClient(altDsn)
+				newOptions := hub.Client().Options()
+				newOptions.Dsn = altDsn
+				client, err = dsnData.AddClient(newOptions)
 				if err != nil {
 					return
 				}

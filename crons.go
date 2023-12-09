@@ -112,7 +112,9 @@ func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerTy
 			client, _ := dsnData.GetClient(altDsn)
 
 			if client == nil {
-				client, err = dsnData.AddClient(altDsn)
+				newOptions := hub.Client().Options()
+				newOptions.Dsn = altDsn
+				client, err = dsnData.AddClient(newOptions)
 				if err != nil {
 					return
 				}
