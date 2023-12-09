@@ -4,6 +4,9 @@ metadata:
   name: cronjob-basic-success
   labels:
     type: test-pod
+  "annotations": {
+    "dsn" : "https://474d9da00094c5e39d6800c01f3aeff6@o4506191942320128.ingest.sentry.io/4506363396816896",
+  }
 spec:
   schedule: "* * * * *"
   jobTemplate:

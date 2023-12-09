@@ -140,12 +140,44 @@ func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1
 		return
 	}
 	hub.WithScope(func(scope *sentry.Scope) {
+
+		// search for alternative DSN in the annotations
+		altDsn, err := searchDsn(ctx, eventObject.ObjectMeta)
+		if err != nil {
+			return
+		}
+
+		// if we did find an alternative DSN
+		if altDsn != "" {
+			// attempt to retrieve the corresponding client
+			client, err := dsnData.GetClient(altDsn)
+			if err != nil {
+				return
+			}
+
+			if client == nil {
+				client, err = dsnData.AddClient(altDsn)
+				if err != nil {
+					return
+				}
+			}
+
+			// bind the alternative client to the top layer
+			hub.BindClient(client)
+			fmt.Println("binding client with DSN: " + altDsn)
+		} else {
+			fmt.Println("Using default dsn: " + hub.Client().Options().Dsn)
+		}
+
 		setWatcherTag(scope, eventsWatcherName)
 		sentryEvent := handleGeneralEvent(ctx, eventObject, scope)
 		if sentryEvent != nil {
+			fmt.Println("the event temp dsn is " + hub.Client().Options().Dsn)
 			hub.CaptureEvent(sentryEvent)
 		}
 	})
+	fmt.Println("the event dsn returns to " + hub.Client().Options().Dsn)
+
 }
 
 func watchEventsInNamespace(ctx context.Context, namespace string, watchSince time.Time) (err error) {

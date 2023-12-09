@@ -78,6 +78,11 @@ func startCronsInformers(ctx context.Context, namespace string) error {
 // or if the job exited
 func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerType EventHandlerType) error {
 
+	hub := sentry.GetHubFromContext(ctx)
+	if hub == nil {
+		return errors.New("cannot get hub from context")
+	}
+
 	// Try to find the cronJob name that owns the job
 	// in order to get the crons monitor data
 	if len(job.OwnerReferences) == 0 {
@@ -92,16 +97,42 @@ func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerTy
 		return errors.New("cannot find cronJob data")
 	}
 
-	// The job just begun so check in to start
-	if job.Status.Active == 0 && job.Status.Succeeded == 0 && job.Status.Failed == 0 {
-		// Add the job to the cronJob informer data
-		checkinJobStarting(ctx, job, cronsMonitorData)
-	} else if job.Status.Active > 0 {
-		return nil
-	} else if job.Status.Failed > 0 || job.Status.Succeeded > 0 {
-		checkinJobEnding(ctx, job, cronsMonitorData)
-		return nil // finished
-	}
+	hub.WithScope(func(scope *sentry.Scope) {
+		altDsn, err := searchDsn(ctx, job.ObjectMeta)
+		if err != nil {
+			return
+		}
+
+		fmt.Println("found alt dsn: " + altDsn)
+
+		// if we did find an alternative DSN
+		if altDsn != "" {
+			// attempt to retrieve the corresponding client
+			client, _ := dsnData.GetClient(altDsn)
+
+			if client == nil {
+				client, err = dsnData.AddClient(altDsn)
+				if err != nil {
+					return
+				}
+			}
+
+			// bind the alternative client to the top layer
+			hub.BindClient(client)
+		}
+
+		// The job just begun so check in to start
+		if job.Status.Active == 0 && job.Status.Succeeded == 0 && job.Status.Failed == 0 {
+			// Add the job to the cronJob informer data
+			checkinJobStarting(ctx, job, cronsMonitorData)
+		} else if job.Status.Active > 0 {
+			return
+		} else if job.Status.Failed > 0 || job.Status.Succeeded > 0 {
+			checkinJobEnding(ctx, job, cronsMonitorData)
+			return // finished
+		}
+	})
+
 	return nil
 }
 
@@ -109,6 +140,11 @@ func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerTy
 func checkinJobStarting(ctx context.Context, job *batchv1.Job, cronsMonitorData *CronsMonitorData) error {
 
 	logger := zerolog.Ctx(ctx)
+
+	hub := sentry.GetHubFromContext(ctx)
+	if hub == nil {
+		return errors.New("cannot get hub from context")
+	}
 
 	// Check if job already added to jobData slice
 	_, ok := cronsMonitorData.JobDatas[job.Name]
@@ -118,7 +154,7 @@ func checkinJobStarting(ctx context.Context, job *batchv1.Job, cronsMonitorData 
 	logger.Debug().Msgf("Checking in at start of job: %s\n", job.Name)
 
 	// All containers running in the pod
-	checkinId := sentry.CaptureCheckIn(
+	checkinId := hub.CaptureCheckIn(
 		&sentry.CheckIn{
 			MonitorSlug: cronsMonitorData.MonitorSlug,
 			Status:      sentry.CheckInStatusInProgress,
@@ -132,6 +168,11 @@ func checkinJobStarting(ctx context.Context, job *batchv1.Job, cronsMonitorData 
 
 // Sends the checkin event to sentry crons for when a job ends
 func checkinJobEnding(ctx context.Context, job *batchv1.Job, cronsMonitorData *CronsMonitorData) error {
+
+	hub := sentry.GetHubFromContext(ctx)
+	if hub == nil {
+		return errors.New("cannot get hub from context")
+	}
 
 	logger := zerolog.Ctx(ctx)
 
@@ -157,7 +198,7 @@ func checkinJobEnding(ctx context.Context, job *batchv1.Job, cronsMonitorData *C
 	}
 
 	logger.Trace().Msgf("checking in at end of job: %s\n", job.Name)
-	sentry.CaptureCheckIn(
+	hub.CaptureCheckIn(
 		&sentry.CheckIn{
 			ID:          jobData.getCheckinId(),
 			MonitorSlug: cronsMonitorData.MonitorSlug,
