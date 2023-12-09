@@ -83,6 +83,9 @@ func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerTy
 		return errors.New("cannot get hub from context")
 	}
 
+	// to avoid concurrency issue
+	hub = hub.Clone()
+
 	// Try to find the cronJob name that owns the job
 	// in order to get the crons monitor data
 	if len(job.OwnerReferences) == 0 {
@@ -103,8 +106,6 @@ func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerTy
 			return
 		}
 
-		fmt.Println("found alt dsn: " + altDsn)
-
 		// if we did find an alternative DSN
 		if altDsn != "" {
 			// attempt to retrieve the corresponding client
@@ -121,6 +122,8 @@ func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerTy
 			hub.BindClient(client)
 		}
 
+		// pass clone hub down with context
+		ctx = sentry.SetHubOnContext(ctx, hub)
 		// The job just begun so check in to start
 		if job.Status.Active == 0 && job.Status.Succeeded == 0 && job.Status.Failed == 0 {
 			// Add the job to the cronJob informer data

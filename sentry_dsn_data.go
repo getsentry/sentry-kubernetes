@@ -118,3 +118,46 @@ func searchDsn(ctx context.Context, object metav1.ObjectMeta) (string, error) {
 		return "", errors.New("unsupported object kind encountered")
 	}
 }
+
+func findObjectMeta(ctx context.Context, kind string, namespace string, name string) (*metav1.ObjectMeta, error) {
+
+	clientset, err := getClientsetFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	switch kind {
+	case "Pod":
+		parentPod, err := clientset.CoreV1().Pods(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return &parentPod.ObjectMeta, nil
+	case "ReplicaSet":
+		parentReplicaSet, err := clientset.AppsV1().ReplicaSets(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return &parentReplicaSet.ObjectMeta, nil
+	case "Deployment":
+		parentDeployment, err := clientset.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return &parentDeployment.ObjectMeta, nil
+	case "Job":
+		parentJob, err := clientset.BatchV1().Jobs(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return &parentJob.ObjectMeta, nil
+	case "CronJob":
+		parentCronjob, err := clientset.BatchV1().CronJobs(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return &parentCronjob.ObjectMeta, nil
+	default:
+		return nil, errors.New("unsupported object kind encountered")
+	}
+}
