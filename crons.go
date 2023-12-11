@@ -83,7 +83,7 @@ func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerTy
 		return errors.New("cannot get hub from context")
 	}
 
-	// to avoid concurrency issue
+	// To avoid concurrency issue
 	hub = hub.Clone()
 
 	// Try to find the cronJob name that owns the job
@@ -101,30 +101,14 @@ func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerTy
 	}
 
 	hub.WithScope(func(scope *sentry.Scope) {
-		altDsn, err := searchDsn(ctx, job.ObjectMeta)
-		if err != nil {
-			return
-		}
 
-		// if we did find an alternative DSN
-		if altDsn != "" {
-			// attempt to retrieve the corresponding client
-			client, _ := dsnData.GetClient(altDsn)
-
-			if client == nil {
-				newOptions := hub.Client().Options()
-				newOptions.Dsn = altDsn
-				client, err = dsnData.AddClient(newOptions)
-				if err != nil {
-					return
-				}
-			}
-
-			// bind the alternative client to the top layer
+		// If DSN annotation provided, we bind a new client with that DSN
+		client, ok := dsnData.GetClientFromObject(ctx, &job.ObjectMeta, hub.Clone().Client().Options())
+		if ok {
 			hub.BindClient(client)
 		}
 
-		// pass clone hub down with context
+		// Pass clone hub down with context
 		ctx = sentry.SetHubOnContext(ctx, hub)
 		// The job just begun so check in to start
 		if job.Status.Active == 0 && job.Status.Succeeded == 0 && job.Status.Failed == 0 {
@@ -134,7 +118,7 @@ func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerTy
 			return
 		} else if job.Status.Failed > 0 || job.Status.Succeeded > 0 {
 			checkinJobEnding(ctx, job, cronsMonitorData)
-			return // finished
+			return // Finished
 		}
 	})
 

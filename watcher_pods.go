@@ -104,7 +104,7 @@ func handlePodWatchEvent(ctx context.Context, event *watch.Event) {
 		logger.Error().Msgf("Cannot get Sentry hub from context")
 		return
 	}
-	// to avoid concurrency issue
+	// To avoid concurrency issue
 	hub = hub.Clone()
 
 	containerStatuses := podObject.Status.ContainerStatuses
@@ -117,34 +117,13 @@ func handlePodWatchEvent(ctx context.Context, event *watch.Event) {
 		}
 		hub.WithScope(func(scope *sentry.Scope) {
 
-			// search for alternative DSN in the annotations
-			altDsn, err := searchDsn(ctx, podObject.ObjectMeta)
-			if err != nil {
-				return
-			}
-
-			// if we did find an alternative DSN
-			if altDsn != "" {
-				// attempt to retrieve the corresponding client
-				client, err := dsnData.GetClient(altDsn)
-				if err != nil {
-					return
-				}
-
-				if client == nil {
-					newOptions := hub.Client().Options()
-					newOptions.Dsn = altDsn
-					client, err = dsnData.AddClient(newOptions)
-					if err != nil {
-						return
-					}
-				}
-
-				// bind the alternative client to the top layer
+			// If DSN annotation provided, we bind a new client with that DSN
+			client, ok := dsnData.GetClientFromObject(ctx, &podObject.ObjectMeta, hub.Clone().Client().Options())
+			if ok {
 				hub.BindClient(client)
 			}
 
-			// pass down clone context
+			// Pass down clone context
 			ctx = sentry.SetHubOnContext(ctx, hub)
 			setWatcherTag(scope, podsWatcherName)
 			sentryEvent := handlePodTerminationEvent(ctx, &status, podObject, scope)

@@ -150,30 +150,9 @@ func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1
 			return
 		}
 
-		// Search for alternative DSN in the annotations
-		altDsn, err := searchDsn(ctx, *objectMeta)
-		if err != nil {
-			return
-		}
-
-		// If we did find an alternative DSN
-		if altDsn != "" {
-			// Attempt to retrieve the corresponding client
-			client, err := dsnData.GetClient(altDsn)
-			if err != nil {
-				return
-			}
-
-			if client == nil {
-				newOptions := hub.Client().Options()
-				newOptions.Dsn = altDsn
-				client, err = dsnData.AddClient(newOptions)
-				if err != nil {
-					return
-				}
-			}
-
-			// Bind the alternative client to the top layer
+		// if DSN annotation provided, we bind a new client with that DSN
+		client, ok := dsnData.GetClientFromObject(ctx, objectMeta, hub.Clone().Client().Options())
+		if ok {
 			hub.BindClient(client)
 		}
 

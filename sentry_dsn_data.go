@@ -9,30 +9,31 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var DSN = "dsn"
+var DSNAnnotation = "k8s.sentry.io/dsn"
 
 // map from Sentry DSN to Client
-type DsnData struct {
+type DsnClientMapping struct {
 	mutex     sync.RWMutex
 	clientMap map[string]*sentry.Client
 }
 
-func NewDsnData() *DsnData {
-	return &DsnData{
+func NewDsnData() *DsnClientMapping {
+	return &DsnClientMapping{
 		mutex:     sync.RWMutex{},
 		clientMap: make(map[string]*sentry.Client),
 	}
 }
 
 // return client if added successfully
-func (d *DsnData) AddClient(options sentry.ClientOptions) (*sentry.Client, error) {
+// (also returns client if already exists)
+func (d *DsnClientMapping) AddClientToMap(options sentry.ClientOptions) (*sentry.Client, error) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 
 	// check if we already encountered this dsn
 	existingClient, ok := d.clientMap[options.Dsn]
 	if ok {
-		return existingClient, errors.New("a client with the given dsn already exists")
+		return existingClient, nil
 	}
 
 	// create a new client for the dsn
@@ -52,28 +53,49 @@ func (d *DsnData) AddClient(options sentry.ClientOptions) (*sentry.Client, error
 }
 
 // retrieve a client with given dsn
-func (d *DsnData) GetClient(dsn string) (*sentry.Client, error) {
+func (d *DsnClientMapping) GetClientFromMap(dsn string) (*sentry.Client, bool) {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 
 	// check if we have this dsn
 	existingClient, ok := d.clientMap[dsn]
 	if ok {
-		return existingClient, nil
+		return existingClient, true
 	} else {
-		return nil, errors.New("a client with given DSN does not exist")
+		return nil, false
+	}
+}
+
+func (d *DsnClientMapping) GetClientFromObject(ctx context.Context, objectMeta *metav1.ObjectMeta, clientOptions sentry.ClientOptions) (*sentry.Client, bool) {
+
+	// find DSN annotation from the object
+	altDsn, err := searchDsn(ctx, objectMeta)
+	if err != nil {
+		return nil, false
+	}
+
+	// if we did find an alternative DSN
+	if altDsn != "" {
+		// attempt to retrieve the corresponding client
+		client, _ := dsnData.GetClientFromMap(altDsn)
+		if client == nil {
+			// create new client
+			clientOptions.Dsn = altDsn
+			client, err = dsnData.AddClientToMap(clientOptions)
+			if err != nil {
+				return nil, false
+			}
+		}
+		return client, true
+	} else {
+		return nil, false
 	}
 }
 
 // recursive function to find if there is a DSN annotation
-func searchDsn(ctx context.Context, object metav1.ObjectMeta) (string, error) {
+func searchDsn(ctx context.Context, object *metav1.ObjectMeta) (string, error) {
 
-	clientset, err := getClientsetFromContext(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	dsn, ok := object.Annotations[DSN]
+	dsn, ok := object.Annotations[DSNAnnotation]
 	if ok {
 		return dsn, nil
 	}
@@ -83,40 +105,13 @@ func searchDsn(ctx context.Context, object metav1.ObjectMeta) (string, error) {
 	}
 
 	owningRef := object.OwnerReferences[0]
-	switch kind := owningRef.Kind; kind {
-	case "Pod":
-		parentPod, err := clientset.CoreV1().Pods(object.Namespace).Get(context.Background(), owningRef.Name, metav1.GetOptions{})
-		if err != nil {
-			return "", err
-		}
-		return searchDsn(ctx, parentPod.ObjectMeta)
-	case "ReplicaSet":
-		parentReplicaSet, err := clientset.AppsV1().ReplicaSets(object.Namespace).Get(context.Background(), owningRef.Name, metav1.GetOptions{})
-		if err != nil {
-			return "", err
-		}
-		return searchDsn(ctx, parentReplicaSet.ObjectMeta)
-	case "Deployment":
-		parentDeployment, err := clientset.AppsV1().Deployments(object.Namespace).Get(context.Background(), owningRef.Name, metav1.GetOptions{})
-		if err != nil {
-			return "", err
-		}
-		return searchDsn(ctx, parentDeployment.ObjectMeta)
-	case "Job":
-		parentJob, err := clientset.BatchV1().Jobs(object.Namespace).Get(context.Background(), owningRef.Name, metav1.GetOptions{})
-		if err != nil {
-			return "", err
-		}
-		return searchDsn(ctx, parentJob.ObjectMeta)
-	case "CronJob":
-		parentCronjob, err := clientset.BatchV1().CronJobs(object.Namespace).Get(context.Background(), owningRef.Name, metav1.GetOptions{})
-		if err != nil {
-			return "", err
-		}
-		return searchDsn(ctx, parentCronjob.ObjectMeta)
-	default:
-		return "", errors.New("unsupported object kind encountered")
+	owningObjectMeta, err := findObjectMeta(ctx, owningRef.Kind, object.Namespace, owningRef.Name)
+
+	if err != nil {
+		return "", err
 	}
+
+	return searchDsn(ctx, owningObjectMeta)
 }
 
 func findObjectMeta(ctx context.Context, kind string, namespace string, name string) (*metav1.ObjectMeta, error) {
@@ -128,35 +123,35 @@ func findObjectMeta(ctx context.Context, kind string, namespace string, name str
 
 	switch kind {
 	case "Pod":
-		parentPod, err := clientset.CoreV1().Pods(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		pod, err := clientset.CoreV1().Pods(namespace).Get(context.Background(), name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
-		return &parentPod.ObjectMeta, nil
+		return &pod.ObjectMeta, nil
 	case "ReplicaSet":
-		parentReplicaSet, err := clientset.AppsV1().ReplicaSets(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		replicaSet, err := clientset.AppsV1().ReplicaSets(namespace).Get(context.Background(), name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
-		return &parentReplicaSet.ObjectMeta, nil
+		return &replicaSet.ObjectMeta, nil
 	case "Deployment":
-		parentDeployment, err := clientset.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		deployment, err := clientset.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
-		return &parentDeployment.ObjectMeta, nil
+		return &deployment.ObjectMeta, nil
 	case "Job":
-		parentJob, err := clientset.BatchV1().Jobs(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		job, err := clientset.BatchV1().Jobs(namespace).Get(context.Background(), name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
-		return &parentJob.ObjectMeta, nil
+		return &job.ObjectMeta, nil
 	case "CronJob":
-		parentCronjob, err := clientset.BatchV1().CronJobs(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		cronjob, err := clientset.BatchV1().CronJobs(namespace).Get(context.Background(), name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
-		return &parentCronjob.ObjectMeta, nil
+		return &cronjob.ObjectMeta, nil
 	default:
 		return nil, errors.New("unsupported object kind encountered")
 	}
