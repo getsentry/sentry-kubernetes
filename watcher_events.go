@@ -145,15 +145,13 @@ func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1
 	hub.WithScope(func(scope *sentry.Scope) {
 
 		// Find the object meta that the event is about
-		objectMeta, err := findObjectMeta(ctx, eventObject.InvolvedObject.Kind, eventObject.InvolvedObject.Namespace, eventObject.InvolvedObject.Name)
-		if err != nil {
-			return
-		}
-
-		// if DSN annotation provided, we bind a new client with that DSN
-		client, ok := dsnData.GetClientFromObject(ctx, objectMeta, hub.Clone().Client().Options())
+		objectMeta, ok := findObjectMeta(ctx, eventObject.InvolvedObject.Kind, eventObject.InvolvedObject.Namespace, eventObject.InvolvedObject.Name)
 		if ok {
-			hub.BindClient(client)
+			// if DSN annotation provided, we bind a new client with that DSN
+			client, ok := dsnData.GetClientFromObject(ctx, objectMeta, hub.Clone().Client().Options())
+			if ok {
+				hub.BindClient(client)
+			}
 		}
 
 		// Pass down clone context

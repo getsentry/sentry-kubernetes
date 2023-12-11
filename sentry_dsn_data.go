@@ -105,54 +105,54 @@ func searchDsn(ctx context.Context, object *metav1.ObjectMeta) (string, error) {
 	}
 
 	owningRef := object.OwnerReferences[0]
-	owningObjectMeta, err := findObjectMeta(ctx, owningRef.Kind, object.Namespace, owningRef.Name)
+	owningObjectMeta, ok := findObjectMeta(ctx, owningRef.Kind, object.Namespace, owningRef.Name)
 
-	if err != nil {
-		return "", err
+	if !ok {
+		return "", errors.New("the DSN cannot be found")
 	}
 
 	return searchDsn(ctx, owningObjectMeta)
 }
 
-func findObjectMeta(ctx context.Context, kind string, namespace string, name string) (*metav1.ObjectMeta, error) {
+func findObjectMeta(ctx context.Context, kind string, namespace string, name string) (*metav1.ObjectMeta, bool) {
 
 	clientset, err := getClientsetFromContext(ctx)
 	if err != nil {
-		return nil, err
+		return nil, false
 	}
 
 	switch kind {
 	case "Pod":
 		pod, err := clientset.CoreV1().Pods(namespace).Get(context.Background(), name, metav1.GetOptions{})
 		if err != nil {
-			return nil, err
+			return nil, false
 		}
-		return &pod.ObjectMeta, nil
+		return &pod.ObjectMeta, true
 	case "ReplicaSet":
 		replicaSet, err := clientset.AppsV1().ReplicaSets(namespace).Get(context.Background(), name, metav1.GetOptions{})
 		if err != nil {
-			return nil, err
+			return nil, false
 		}
-		return &replicaSet.ObjectMeta, nil
+		return &replicaSet.ObjectMeta, true
 	case "Deployment":
 		deployment, err := clientset.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
 		if err != nil {
-			return nil, err
+			return nil, false
 		}
-		return &deployment.ObjectMeta, nil
+		return &deployment.ObjectMeta, true
 	case "Job":
 		job, err := clientset.BatchV1().Jobs(namespace).Get(context.Background(), name, metav1.GetOptions{})
 		if err != nil {
-			return nil, err
+			return nil, false
 		}
-		return &job.ObjectMeta, nil
+		return &job.ObjectMeta, true
 	case "CronJob":
 		cronjob, err := clientset.BatchV1().CronJobs(namespace).Get(context.Background(), name, metav1.GetOptions{})
 		if err != nil {
-			return nil, err
+			return nil, false
 		}
-		return &cronjob.ObjectMeta, nil
+		return &cronjob.ObjectMeta, true
 	default:
-		return nil, errors.New("unsupported object kind encountered")
+		return nil, false
 	}
 }
