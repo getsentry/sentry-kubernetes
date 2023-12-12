@@ -4,9 +4,8 @@ metadata:
   name: cronjob-late-success
   labels:
     type: test-pod
-  "annotations": {
-    "k8s.sentry.io/dsn" : "https://c6a5dd95a40ab7e4e34a3af43c14f848@o4506191942320128.ingest.sentry.io/4506363401601024",
-  }
+  annotations:
+    k8s.sentry.io/dsn: "https://c6a5dd95a40ab7e4e34a3af43c14f848@o4506191942320128.ingest.sentry.io/4506363401601024"
 spec:
   schedule: "* * * * *"
   jobTemplate:

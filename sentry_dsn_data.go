@@ -59,11 +59,7 @@ func (d *DsnClientMapping) GetClientFromMap(dsn string) (*sentry.Client, bool) {
 
 	// check if we have this dsn
 	existingClient, ok := d.clientMap[dsn]
-	if ok {
-		return existingClient, true
-	} else {
-		return nil, false
-	}
+	return existingClient, ok
 }
 
 func (d *DsnClientMapping) GetClientFromObject(ctx context.Context, objectMeta *metav1.ObjectMeta, clientOptions sentry.ClientOptions) (*sentry.Client, bool) {
