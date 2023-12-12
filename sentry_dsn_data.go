@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"os"
 	"sync"
 
 	"github.com/getsentry/sentry-go"
@@ -13,14 +14,16 @@ var DSNAnnotation = "k8s.sentry.io/dsn"
 
 // map from Sentry DSN to Client
 type DsnClientMapping struct {
-	mutex     sync.RWMutex
-	clientMap map[string]*sentry.Client
+	mutex         sync.RWMutex
+	clientMap     map[string]*sentry.Client
+	customDsnFlag bool
 }
 
 func NewDsnData() *DsnClientMapping {
 	return &DsnClientMapping{
-		mutex:     sync.RWMutex{},
-		clientMap: make(map[string]*sentry.Client),
+		mutex:         sync.RWMutex{},
+		clientMap:     make(map[string]*sentry.Client),
+		customDsnFlag: isTruthy(os.Getenv("SENTRY_K8S_CUSTOM_DSNS")),
 	}
 }
 
@@ -63,6 +66,14 @@ func (d *DsnClientMapping) GetClientFromMap(dsn string) (*sentry.Client, bool) {
 }
 
 func (d *DsnClientMapping) GetClientFromObject(ctx context.Context, objectMeta *metav1.ObjectMeta, clientOptions sentry.ClientOptions) (*sentry.Client, bool) {
+
+	// If the custom DSN flag is set to false
+	// then avoid searching for the custom DSN
+	// or adding an alternative client and instead
+	// just return nil as the client
+	if !d.customDsnFlag {
+		return nil, false
+	}
 
 	// find DSN annotation from the object
 	altDsn, err := searchDsn(ctx, objectMeta)

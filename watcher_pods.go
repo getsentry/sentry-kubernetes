@@ -118,7 +118,7 @@ func handlePodWatchEvent(ctx context.Context, event *watch.Event) {
 		hub.WithScope(func(scope *sentry.Scope) {
 
 			// If DSN annotation provided, we bind a new client with that DSN
-			client, ok := dsnData.GetClientFromObject(ctx, &podObject.ObjectMeta, hub.Clone().Client().Options())
+			client, ok := dsnData.GetClientFromObject(ctx, &podObject.ObjectMeta, hub.Client().Options())
 			if ok {
 				hub.BindClient(client)
 			}
