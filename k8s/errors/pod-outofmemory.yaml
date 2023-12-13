@@ -6,6 +6,8 @@ metadata:
     run: pod-outofmemory
     type: test-pod
   name: pod-outofmemory
+  annotations:
+    k8s.sentry.io/dsn: "https://474d9da00094c5e39d6800c01f3aeff6@o4506191942320128.ingest.sentry.io/4506363396816896"
 spec:
   containers:
     - image: python:3.10-alpine
