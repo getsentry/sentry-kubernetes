@@ -20,7 +20,6 @@ import (
 const podsWatcherName = "pods"
 
 var cronsMetaData = NewCronsMetaData()
-var dsnData = NewDsnData()
 
 func handlePodTerminationEvent(ctx context.Context, containerStatus *v1.ContainerStatus, pod *v1.Pod, scope *sentry.Scope) *sentry.Event {
 	logger := zerolog.Ctx(ctx)
@@ -118,7 +117,7 @@ func handlePodWatchEvent(ctx context.Context, event *watch.Event) {
 		hub.WithScope(func(scope *sentry.Scope) {
 
 			// If DSN annotation provided, we bind a new client with that DSN
-			client, ok := dsnData.GetClientFromObject(ctx, &podObject.ObjectMeta, hub.Client().Options())
+			client, ok := dsnClientMapping.GetClientFromObject(ctx, &podObject.ObjectMeta, hub.Client().Options())
 			if ok {
 				hub.BindClient(client)
 			}

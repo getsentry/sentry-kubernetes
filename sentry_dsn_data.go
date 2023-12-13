@@ -12,14 +12,16 @@ import (
 
 var DSNAnnotation = "k8s.sentry.io/dsn"
 
-// map from Sentry DSN to Client
+var dsnClientMapping = NewDsnClientMapping()
+
+// Map from Sentry DSN to Client
 type DsnClientMapping struct {
 	mutex         sync.RWMutex
 	clientMap     map[string]*sentry.Client
 	customDsnFlag bool
 }
 
-func NewDsnData() *DsnClientMapping {
+func NewDsnClientMapping() *DsnClientMapping {
 	return &DsnClientMapping{
 		mutex:         sync.RWMutex{},
 		clientMap:     make(map[string]*sentry.Client),
@@ -27,19 +29,15 @@ func NewDsnData() *DsnClientMapping {
 	}
 }
 
-// return client if added successfully
+// Return client if added successfully
 // (also returns client if already exists)
 func (d *DsnClientMapping) AddClientToMap(options sentry.ClientOptions) (*sentry.Client, error) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 
-	// check if we already encountered this dsn
-	existingClient, ok := d.clientMap[options.Dsn]
-	if ok {
-		return existingClient, nil
-	}
-
-	// create a new client for the dsn
+	// Create a new client for the dsn
+	// even if client already exists, it
+	// will be re-initialized with a new client
 	newClient, err := sentry.NewClient(
 		sentry.ClientOptions{
 			Dsn:              options.Dsn,
@@ -51,16 +49,15 @@ func (d *DsnClientMapping) AddClientToMap(options sentry.ClientOptions) (*sentry
 		return nil, err
 	}
 	d.clientMap[options.Dsn] = newClient
-
 	return newClient, nil
 }
 
-// retrieve a client with given dsn
+// Retrieve a client with given dsn
 func (d *DsnClientMapping) GetClientFromMap(dsn string) (*sentry.Client, bool) {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 
-	// check if we have this dsn
+	// Check if we have this dsn
 	existingClient, ok := d.clientMap[dsn]
 	return existingClient, ok
 }
@@ -75,20 +72,20 @@ func (d *DsnClientMapping) GetClientFromObject(ctx context.Context, objectMeta *
 		return nil, false
 	}
 
-	// find DSN annotation from the object
+	// Find DSN annotation from the object
 	altDsn, err := searchDsn(ctx, objectMeta)
 	if err != nil {
 		return nil, false
 	}
 
-	// if we did find an alternative DSN
+	// If we did find an alternative DSN
 	if altDsn != "" {
-		// attempt to retrieve the corresponding client
-		client, _ := dsnData.GetClientFromMap(altDsn)
+		// Attempt to retrieve the corresponding client
+		client, _ := dsnClientMapping.GetClientFromMap(altDsn)
 		if client == nil {
 			// create new client
 			clientOptions.Dsn = altDsn
-			client, err = dsnData.AddClientToMap(clientOptions)
+			client, err = dsnClientMapping.AddClientToMap(clientOptions)
 			if err != nil {
 				return nil, false
 			}
@@ -99,7 +96,7 @@ func (d *DsnClientMapping) GetClientFromObject(ctx context.Context, objectMeta *
 	}
 }
 
-// recursive function to find if there is a DSN annotation
+// Recursive function to find if there is a DSN annotation
 func searchDsn(ctx context.Context, object *metav1.ObjectMeta) (string, error) {
 
 	dsn, ok := object.Annotations[DSNAnnotation]

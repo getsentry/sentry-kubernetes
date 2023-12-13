@@ -103,7 +103,7 @@ func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerTy
 	hub.WithScope(func(scope *sentry.Scope) {
 
 		// If DSN annotation provided, we bind a new client with that DSN
-		client, ok := dsnData.GetClientFromObject(ctx, &job.ObjectMeta, hub.Client().Options())
+		client, ok := dsnClientMapping.GetClientFromObject(ctx, &job.ObjectMeta, hub.Client().Options())
 		if ok {
 			hub.BindClient(client)
 		}

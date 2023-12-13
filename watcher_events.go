@@ -148,7 +148,7 @@ func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1
 		objectMeta, ok := findObjectMeta(ctx, eventObject.InvolvedObject.Kind, eventObject.InvolvedObject.Namespace, eventObject.InvolvedObject.Name)
 		if ok {
 			// if DSN annotation provided, we bind a new client with that DSN
-			client, ok := dsnData.GetClientFromObject(ctx, objectMeta, hub.Client().Options())
+			client, ok := dsnClientMapping.GetClientFromObject(ctx, objectMeta, hub.Client().Options())
 			if ok {
 				hub.BindClient(client)
 			}
