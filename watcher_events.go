@@ -139,7 +139,23 @@ func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1
 		logger.Error().Msgf("Cannot get Sentry hub from context")
 		return
 	}
+
+	// To avoid concurrency issue
+	hub = hub.Clone()
 	hub.WithScope(func(scope *sentry.Scope) {
+
+		// Find the object meta that the event is about
+		objectMeta, ok := findObjectMeta(ctx, eventObject.InvolvedObject.Kind, eventObject.InvolvedObject.Namespace, eventObject.InvolvedObject.Name)
+		if ok {
+			// if DSN annotation provided, we bind a new client with that DSN
+			client, ok := dsnClientMapping.GetClientFromObject(ctx, objectMeta, hub.Client().Options())
+			if ok {
+				hub.BindClient(client)
+			}
+		}
+
+		// Pass down clone context
+		ctx = sentry.SetHubOnContext(ctx, hub)
 		setWatcherTag(scope, eventsWatcherName)
 		sentryEvent := handleGeneralEvent(ctx, eventObject, scope)
 		if sentryEvent != nil {

@@ -101,6 +101,7 @@ func TestHandleWatchEvent(t *testing.T) {
 
 	// The Sentry event message should match that of the event message
 	expectedMsg := "Fake Message: TestHandleWatchEvent"
+
 	if events[0].Message != expectedMsg {
 		t.Errorf("received %s, wanted %s", events[0].Message, expectedMsg)
 	}
