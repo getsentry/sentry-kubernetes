@@ -9,16 +9,16 @@ import (
 
 type clientsetCtxKey struct{}
 
-func setClientsetOnContext(ctx context.Context, clientset *kubernetes.Clientset) context.Context {
+func setClientsetOnContext(ctx context.Context, clientset kubernetes.Interface) context.Context {
 	return context.WithValue(ctx, clientsetCtxKey{}, clientset)
 }
 
-func getClientsetFromContext(ctx context.Context) (*kubernetes.Clientset, error) {
+func getClientsetFromContext(ctx context.Context) (kubernetes.Interface, error) {
 	val := ctx.Value(clientsetCtxKey{})
 	if val == nil {
 		return nil, fmt.Errorf("no clientset present on context")
 	}
-	if clientset, ok := val.(*kubernetes.Clientset); ok {
+	if clientset, ok := val.(kubernetes.Interface); ok {
 		return clientset, nil
 	} else {
 		return nil, fmt.Errorf("cannot convert clientset value from context")
