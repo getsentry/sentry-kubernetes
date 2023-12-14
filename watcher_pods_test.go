@@ -45,12 +45,12 @@ func TestHandlePodWatchEvent(t *testing.T) {
 		Object: &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "TestHandlePodWatchEventPod",
-				Namespace: "TestHandlePodWatchEventNameSpace",
+				Namespace: "TestHandlePodWatchEventNamespace",
 			},
 			Status: corev1.PodStatus{
 				ContainerStatuses: []corev1.ContainerStatus{
 					{
-						Name: "fake_DNS_Label",
+						Name: "FakeDnsLabel",
 						State: corev1.ContainerState{
 							Terminated: &corev1.ContainerStateTerminated{
 								ExitCode: 1,
@@ -86,9 +86,10 @@ func TestHandlePodWatchEvent(t *testing.T) {
 
 	// Check that the tags of event are set correctly by the innermost scope
 	// corresponding to the creation of the Sentry event
-	expectedTags := map[string]string{"container_name": "fake_DNS_Label",
+	expectedTags := map[string]string{
+		"container_name":         "FakeDnsLabel",
 		"event_source_component": "x-pod-controller",
-		"namespace":              "TestHandlePodWatchEventNameSpace",
+		"namespace":              "TestHandlePodWatchEventNamespace",
 		"pod_name":               "TestHandlePodWatchEventPod",
 		"reason":                 "Fake Reason: TestHandlePodWatchEvent",
 		"watcher_name":           "pods"}
