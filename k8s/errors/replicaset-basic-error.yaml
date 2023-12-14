@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: replicaset-basic-error
+  labels:
+    app: test-pod
+  annotations:
+      k8s.sentry.io/dsn: "https://474d9da00094c5e39d6800c01f3aeff6@o4506191942320128.ingest.sentry.io/4506363396816896"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      tier: replicaset-basic-error
+  template:
+    metadata:
+      labels:
+        tier: replicaset-basic-error
+    spec:
+          containers:
+            - name: hello
+              image: busybox:1.28
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - sleep 1; invalid_command

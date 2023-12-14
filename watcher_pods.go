@@ -63,12 +63,7 @@ func handlePodTerminationEvent(ctx context.Context, containerStatus *v1.Containe
 
 func buildSentryEventFromPodTerminationEvent(ctx context.Context, pod *v1.Pod, message string, scope *sentry.Scope) *sentry.Event {
 	sentryEvent := &sentry.Event{Message: message, Level: sentry.LevelError}
-	objectRef := &v1.ObjectReference{
-		Kind:      "Pod",
-		Name:      pod.Name,
-		Namespace: pod.Namespace,
-	}
-	runEnhancers(ctx, objectRef, pod, scope, sentryEvent)
+	runEnhancers(ctx, "Pod", pod, scope, sentryEvent)
 	return sentryEvent
 }
 

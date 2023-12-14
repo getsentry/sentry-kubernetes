@@ -45,10 +45,6 @@ func TestRunPodEnhancer(t *testing.T) {
 		t.Fatalf("error injecting pod add: %v", err)
 	}
 	ctx = setClientsetOnContext(ctx, fakeClientset)
-	objRef := &corev1.ObjectReference{
-		Name:      "TestRunPodEnhancerPod",
-		Namespace: "TestRunPodEnhancerNamespace",
-	}
 
 	// Create empty scope
 	scope := sentry.NewScope()
@@ -57,7 +53,7 @@ func TestRunPodEnhancer(t *testing.T) {
 	// Add event message
 	event.Message = "This event is for TestRunPodEnhancer"
 	// Call pod enhancer to modify scope and event
-	err = runPodEnhancer(ctx, objRef, nil, scope, event)
+	err = runPodEnhancer(ctx, podObj, scope, event)
 	if err != nil {
 		t.Errorf("pod enhancer returned an error: %v", err)
 	}
