@@ -84,7 +84,7 @@ func buildSentryEventFromGeneralEvent(ctx context.Context, event *v1.Event, scop
 	}
 
 	// run enhancers with the involved object
-	runEnhancers(ctx, event.InvolvedObject.Kind, involvedObj, scope, sentryEvent)
+	runEnhancers(ctx, event, event.InvolvedObject.Kind, involvedObj, scope, sentryEvent)
 	return sentryEvent
 }
 

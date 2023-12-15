@@ -33,7 +33,7 @@ func handlePodTerminationEvent(ctx context.Context, containerStatus *v1.Containe
 	}
 
 	setTagIfNotEmpty(scope, "reason", state.Reason)
-	setTagIfNotEmpty(scope, "kind", pod.Kind)
+	setTagIfNotEmpty(scope, "kind", "Pod")
 	setTagIfNotEmpty(scope, "object_uid", string(pod.UID))
 	setTagIfNotEmpty(scope, "namespace", pod.Namespace)
 	setTagIfNotEmpty(scope, "pod_name", pod.Name)
@@ -63,7 +63,7 @@ func handlePodTerminationEvent(ctx context.Context, containerStatus *v1.Containe
 
 func buildSentryEventFromPodTerminationEvent(ctx context.Context, pod *v1.Pod, message string, scope *sentry.Scope) *sentry.Event {
 	sentryEvent := &sentry.Event{Message: message, Level: sentry.LevelError}
-	runEnhancers(ctx, "Pod", pod, scope, sentryEvent)
+	runEnhancers(ctx, nil, "Pod", pod, scope, sentryEvent)
 	return sentryEvent
 }
 
