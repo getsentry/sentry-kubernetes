@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -11,6 +11,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
@@ -20,6 +21,11 @@ import (
 const podsWatcherName = "pods"
 
 var cronsMetaData = NewCronsMetaData()
+
+var cronjobInformer cache.SharedIndexInformer
+var jobInformer cache.SharedIndexInformer
+var replicasetInformer cache.SharedIndexInformer
+var deploymentInformer cache.SharedIndexInformer
 
 func handlePodTerminationEvent(ctx context.Context, containerStatus *v1.ContainerStatus, pod *v1.Pod, scope *sentry.Scope) *sentry.Event {
 	logger := zerolog.Ctx(ctx)
@@ -33,7 +39,7 @@ func handlePodTerminationEvent(ctx context.Context, containerStatus *v1.Containe
 	}
 
 	setTagIfNotEmpty(scope, "reason", state.Reason)
-	setTagIfNotEmpty(scope, "kind", "Pod")
+	setTagIfNotEmpty(scope, "kind", POD)
 	setTagIfNotEmpty(scope, "object_uid", string(pod.UID))
 	setTagIfNotEmpty(scope, "namespace", pod.Namespace)
 	setTagIfNotEmpty(scope, "pod_name", pod.Name)
@@ -63,7 +69,7 @@ func handlePodTerminationEvent(ctx context.Context, containerStatus *v1.Containe
 
 func buildSentryEventFromPodTerminationEvent(ctx context.Context, pod *v1.Pod, message string, scope *sentry.Scope) *sentry.Event {
 	sentryEvent := &sentry.Event{Message: message, Level: sentry.LevelError}
-	runEnhancers(ctx, nil, "Pod", pod, scope, sentryEvent)
+	runEnhancers(ctx, nil, POD, pod, scope, sentryEvent)
 	return sentryEvent
 }
 
@@ -188,13 +194,10 @@ func watchPodsInNamespaceForever(ctx context.Context, config *rest.Config, names
 
 	ctx = setClientsetOnContext(ctx, clientset)
 
-	// Create the informers to integrate with sentry crons
-	if isTruthy(os.Getenv("SENTRY_K8S_MONITOR_CRONJOBS")) {
-		logger.Info().Msgf("Enabling CronJob monitoring")
-		go startCronsInformers(ctx, namespace)
-	} else {
-		logger.Info().Msgf("CronJob monitoring is disabled")
-	}
+	// Start the informers for Sentry event capturing
+	// and caching with the indexers
+	go startInformers(ctx, namespace)
+
 	for {
 		if err := watchPodsInNamespace(ctx, namespace); err != nil {
 			logger.Error().Msgf("Error while watching pods %s: %s", where, err)
@@ -210,4 +213,69 @@ func startPodWatchers(ctx context.Context, config *rest.Config, namespaces []str
 		go watchPodsInNamespaceForever(ctx, config, namespace)
 
 	}
+}
+
+// Starts all informers (jobs, cronjobs, replicasets, deployments)
+// if we opt into cronjob, attach the job/cronjob event handlers
+// and add to the crons monitor data struct for Sentry Crons
+func startInformers(ctx context.Context, namespace string) error {
+
+	clientset, err := getClientsetFromContext(ctx)
+	if err != nil {
+		return errors.New("failed to get clientset")
+	}
+
+	// Create factory that will produce both the cronjob informer and job informer
+	factory := informers.NewSharedInformerFactoryWithOptions(
+		clientset,
+		5*time.Second,
+		informers.WithNamespace(namespace),
+	)
+
+	// Create the job informer
+	jobInformer, err = createJobInformer(ctx, factory, namespace)
+	if err != nil {
+		return err
+	}
+	// Create the cronjob informer
+	cronjobInformer, err = createCronjobInformer(ctx, factory, namespace)
+	if err != nil {
+		return err
+	}
+	// Create the replicaset informer
+	replicasetInformer, err = createReplicasetInformer(ctx, factory, namespace)
+	if err != nil {
+		return err
+	}
+	// Create the deployment informer
+	deploymentInformer, err = createDeploymentInformer(ctx, factory, namespace)
+	if err != nil {
+		return err
+	}
+
+	// Channel to tell the factory to stop the informers
+	doneChan := make(chan struct{})
+	factory.Start(doneChan)
+
+	// Sync the cronjob informer cache
+	if ok := cache.WaitForCacheSync(doneChan, cronjobInformer.HasSynced); !ok {
+		return errors.New("cronjob informer failed to sync")
+	}
+	// Sync the job informer cache
+	if ok := cache.WaitForCacheSync(doneChan, jobInformer.HasSynced); !ok {
+		return errors.New("job informer failed to sync")
+	}
+	// Sync the replicaset informer cache
+	if ok := cache.WaitForCacheSync(doneChan, replicasetInformer.HasSynced); !ok {
+		return errors.New("replicaset informer failed to sync")
+	}
+	// Sync the deployment informer cache
+	if ok := cache.WaitForCacheSync(doneChan, deploymentInformer.HasSynced); !ok {
+		return errors.New("deployment informer failed to sync")
+	}
+
+	// Wait for the channel to be closed
+	<-doneChan
+
+	return nil
 }

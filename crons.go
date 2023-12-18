@@ -3,13 +3,10 @@ package main
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/rs/zerolog"
 	batchv1 "k8s.io/api/batch/v1"
-	"k8s.io/client-go/informers"
-	"k8s.io/client-go/tools/cache"
 )
 
 type EventHandlerType string
@@ -19,56 +16,6 @@ const (
 	EventHandlerUpdate EventHandlerType = "UPDATE"
 	EventHandlerDelete EventHandlerType = "DELETE"
 )
-
-var cronjobInformer cache.SharedIndexInformer
-var jobInformer cache.SharedIndexInformer
-
-// Starts the crons informer which has event handlers
-// adds to the crons monitor data struct used for sending
-// checkin events to Sentry
-func startCronsInformers(ctx context.Context, namespace string) error {
-
-	clientset, err := getClientsetFromContext(ctx)
-	if err != nil {
-		return errors.New("failed to get clientset")
-	}
-
-	// Create factory that will produce both the cronjob informer and job informer
-	factory := informers.NewSharedInformerFactoryWithOptions(
-		clientset,
-		5*time.Second,
-		informers.WithNamespace(namespace),
-	)
-
-	// Create the cronjob informer
-	cronjobInformer, err = createCronjobInformer(ctx, factory, namespace)
-	if err != nil {
-		return err
-	}
-	// Create the job informer
-	jobInformer, err = createJobInformer(ctx, factory, namespace)
-	if err != nil {
-		return err
-	}
-
-	// Channel to tell the factory to stop the informers
-	doneChan := make(chan struct{})
-	factory.Start(doneChan)
-
-	// Sync the cronjob informer cache
-	if ok := cache.WaitForCacheSync(doneChan, cronjobInformer.HasSynced); !ok {
-		return errors.New("cronjob informer failed to sync")
-	}
-	// Sync the job informer cache
-	if ok := cache.WaitForCacheSync(doneChan, jobInformer.HasSynced); !ok {
-		return errors.New("job informer failed to sync")
-	}
-
-	// Wait for the channel to be closed
-	<-doneChan
-
-	return nil
-}
 
 // Captures sentry crons checkin event if appropriate
 // by checking the job status to determine if the job just created pod (job starting)
@@ -89,7 +36,7 @@ func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerTy
 		return errors.New("job does not have cronjob reference")
 	}
 	cronjobRef := job.OwnerReferences[0]
-	if !*cronjobRef.Controller || cronjobRef.Kind != "CronJob" {
+	if !*cronjobRef.Controller || cronjobRef.Kind != CRONJOB {
 		return errors.New("job does not have cronjob reference")
 	}
 	cronsMonitorData, ok := cronsMetaData.getCronsMonitorData(cronjobRef.Name)

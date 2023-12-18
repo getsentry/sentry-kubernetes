@@ -120,16 +120,16 @@ func callObjectEnhancer(ctx context.Context, scope *sentry.Scope, kindObjectPair
 
 	var err error = nil
 	switch kindObjectPair.kind {
-	case "Pod":
+	case POD:
 		err = podEnhancer(ctx, scope, kindObjectPair.object, sentryEvent)
-	case "ReplicaSet":
-		err = replicaSetPodEnhancer(ctx, scope, kindObjectPair.object, sentryEvent)
-	case "Deployment":
-		err = deploymentPodEnhancer(ctx, scope, kindObjectPair.object, sentryEvent)
-	case "Job":
-		err = jobPodEnhancer(ctx, scope, kindObjectPair.object, sentryEvent)
-	case "CronJob":
-		err = cronjobPodEnhancer(ctx, scope, kindObjectPair.object, sentryEvent)
+	case REPLICASET:
+		err = replicaSetEnhancer(ctx, scope, kindObjectPair.object, sentryEvent)
+	case DEPLOYMENT:
+		err = deploymentEnhancer(ctx, scope, kindObjectPair.object, sentryEvent)
+	case JOB:
+		err = jobEnhancer(ctx, scope, kindObjectPair.object, sentryEvent)
+	case CRONJOB:
+		err = cronjobEnhancer(ctx, scope, kindObjectPair.object, sentryEvent)
 	default:
 		sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, kindObjectPair.object.GetName())
 	}
@@ -177,14 +177,14 @@ func podEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object,
 	setTagIfNotEmpty(scope, "node_name", nodeName)
 
 	// Add the cronjob to the fingerprint
-	sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, "pod", podObj.Name)
+	sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, POD, podObj.Name)
 
 	// Add the cronjob to the tag
 	setTagIfNotEmpty(scope, "pod_name", object.GetName())
 	podObj.ManagedFields = []metav1.ManagedFieldsEntry{}
 	metadataJson, err := prettyJson(podObj.ObjectMeta)
 	if err == nil {
-		scope.SetContext("pod", sentry.Context{
+		scope.SetContext(POD, sentry.Context{
 			"Metadata": metadataJson,
 		})
 	}
@@ -201,7 +201,7 @@ func podEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object,
 	return nil
 }
 
-func jobPodEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
+func jobEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
 
 	jobObj, ok := object.(*batchv1.Job)
 	if !ok {
@@ -209,14 +209,14 @@ func jobPodEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Obje
 	}
 
 	// Add the cronjob to the fingerprint
-	sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, "job", jobObj.Name)
+	sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, JOB, jobObj.Name)
 
 	// Add the cronjob to the tag
 	setTagIfNotEmpty(scope, "job_name", object.GetName())
 	jobObj.ManagedFields = []metav1.ManagedFieldsEntry{}
 	metadataJson, err := prettyJson(jobObj.ObjectMeta)
 	if err == nil {
-		scope.SetContext("job", sentry.Context{
+		scope.SetContext(JOB, sentry.Context{
 			"Metadata": metadataJson,
 		})
 	}
@@ -231,7 +231,7 @@ func jobPodEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Obje
 	return nil
 }
 
-func cronjobPodEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
+func cronjobEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
 
 	cronjobObj, ok := object.(*batchv1.CronJob)
 	if !ok {
@@ -244,14 +244,14 @@ func cronjobPodEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.
 	})
 
 	// Add the cronjob to the fingerprint
-	sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, "cronjob", cronjobObj.Name)
+	sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, CRONJOB, cronjobObj.Name)
 
 	// Add the cronjob to the tag
 	setTagIfNotEmpty(scope, "cronjob_name", object.GetName())
 	cronjobObj.ManagedFields = []metav1.ManagedFieldsEntry{}
 	metadataJson, err := prettyJson(cronjobObj.ObjectMeta)
 	if err == nil {
-		scope.SetContext("cronjob", sentry.Context{
+		scope.SetContext(CRONJOB, sentry.Context{
 			"Metadata": metadataJson,
 		})
 	}
@@ -266,7 +266,7 @@ func cronjobPodEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.
 	return nil
 }
 
-func replicaSetPodEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
+func replicaSetEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
 
 	replicasetObj, ok := object.(*appsv1.ReplicaSet)
 	if !ok {
@@ -274,14 +274,14 @@ func replicaSetPodEnhancer(ctx context.Context, scope *sentry.Scope, object meta
 	}
 
 	// Add the cronjob to the fingerprint
-	sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, "replicaset", replicasetObj.Name)
+	sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, REPLICASET, replicasetObj.Name)
 
 	// Add the cronjob to the tag
 	setTagIfNotEmpty(scope, "replicaset_name", object.GetName())
 	replicasetObj.ManagedFields = []metav1.ManagedFieldsEntry{}
 	metadataJson, err := prettyJson(replicasetObj.ObjectMeta)
 	if err == nil {
-		scope.SetContext("replicaset", sentry.Context{
+		scope.SetContext(REPLICASET, sentry.Context{
 			"Metadata": metadataJson,
 		})
 	}
@@ -296,21 +296,21 @@ func replicaSetPodEnhancer(ctx context.Context, scope *sentry.Scope, object meta
 	return nil
 }
 
-func deploymentPodEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
+func deploymentEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
 
 	deploymentObj, ok := object.(*appsv1.Deployment)
 	if !ok {
 		return errors.New("failed to cast object to Deployment object")
 	}
 	// Add the cronjob to the fingerprint
-	sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, "deployment", deploymentObj.Name)
+	sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, DEPLOYMENT, deploymentObj.Name)
 
 	// Add the cronjob to the tag
 	setTagIfNotEmpty(scope, "deployment_name", object.GetName())
 	deploymentObj.ManagedFields = []metav1.ManagedFieldsEntry{}
 	metadataJson, err := prettyJson(deploymentObj.ObjectMeta)
 	if err == nil {
-		scope.SetContext("deployment", sentry.Context{
+		scope.SetContext(DEPLOYMENT, sentry.Context{
 			"Metadata": metadataJson,
 		})
 	}

@@ -7,10 +7,20 @@ import (
 	"sync"
 
 	"github.com/getsentry/sentry-go"
+	v1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var DSNAnnotation = "k8s.sentry.io/dsn"
+
+const (
+	POD        string = "Pod"
+	JOB        string = "Job"
+	CRONJOB    string = "CronJob"
+	REPLICASET string = "ReplicaSet"
+	DEPLOYMENT string = "Deployment"
+)
 
 var dsnClientMapping = NewDsnClientMapping()
 
@@ -126,34 +136,79 @@ func findObject(ctx context.Context, kind string, namespace string, name string)
 	}
 
 	switch kind {
-	case "Pod":
+	case POD:
 		pod, err := clientset.CoreV1().Pods(namespace).Get(context.Background(), name, metav1.GetOptions{})
 		if err != nil {
 			return nil, false
 		}
 		return pod, true
-	case "ReplicaSet":
-		replicaSet, err := clientset.AppsV1().ReplicaSets(namespace).Get(context.Background(), name, metav1.GetOptions{})
-		if err != nil {
-			return nil, false
+	case REPLICASET:
+		var replicaSet *v1.ReplicaSet
+		// Check if the replicaset is available in the indexer first
+		if replicasetInformer != nil {
+			obj, ok, err := replicasetInformer.GetIndexer().GetByKey(namespace + "/" + name)
+			if ok && err == nil {
+				replicaSet = obj.(*v1.ReplicaSet)
+			}
+		}
+		if replicaSet == nil {
+			// Query replicaset with kubernetes API
+			replicaSet, err = clientset.AppsV1().ReplicaSets(namespace).Get(context.Background(), name, metav1.GetOptions{})
+			if err != nil {
+				return nil, false
+			}
 		}
 		return replicaSet, true
-	case "Deployment":
-		deployment, err := clientset.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
-		if err != nil {
-			return nil, false
+	case DEPLOYMENT:
+		var deployment *v1.Deployment
+		// Check if the deployment is available in the indexer first
+		if deploymentInformer != nil {
+			obj, ok, err := deploymentInformer.GetIndexer().GetByKey(namespace + "/" + name)
+			if ok && err == nil {
+				deployment = obj.(*v1.Deployment)
+
+			}
+		}
+		if deployment == nil {
+			// Query deployment with kubernetes API
+			deployment, err = clientset.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
+			if err != nil {
+				return nil, false
+			}
 		}
 		return deployment, true
-	case "Job":
-		job, err := clientset.BatchV1().Jobs(namespace).Get(context.Background(), name, metav1.GetOptions{})
-		if err != nil {
-			return nil, false
+	case JOB:
+		var job *batchv1.Job
+		// Check if the job is available in the indexer first
+		if jobInformer != nil {
+			obj, ok, err := jobInformer.GetIndexer().GetByKey(namespace + "/" + name)
+			if ok && err == nil {
+				job = obj.(*batchv1.Job)
+			}
+		}
+		if job == nil {
+			// Query job with kubernetes API
+			job, err = clientset.BatchV1().Jobs(namespace).Get(context.Background(), name, metav1.GetOptions{})
+			if err != nil {
+				return nil, false
+			}
 		}
 		return job, true
-	case "CronJob":
-		cronjob, err := clientset.BatchV1().CronJobs(namespace).Get(context.Background(), name, metav1.GetOptions{})
-		if err != nil {
-			return nil, false
+	case CRONJOB:
+		var cronjob *batchv1.CronJob
+		// Check if the cronjob is available in the indexer first
+		if cronjobInformer != nil {
+			obj, ok, err := cronjobInformer.GetIndexer().GetByKey(namespace + "/" + name)
+			if ok && err == nil {
+				cronjob = obj.(*batchv1.CronJob)
+			}
+		}
+		if cronjob == nil {
+			// Query cronjob with kubernetes API
+			cronjob, err = clientset.BatchV1().CronJobs(namespace).Get(context.Background(), name, metav1.GetOptions{})
+			if err != nil {
+				return nil, false
+			}
 		}
 		return cronjob, true
 	default:

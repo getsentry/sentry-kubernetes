@@ -63,7 +63,7 @@ func TestHandleWatchEvent(t *testing.T) {
 			},
 			InvolvedObject: corev1.ObjectReference{
 				APIVersion:      "batch/v1",
-				Kind:            "CronJob",
+				Kind:            CRONJOB,
 				Name:            "cronjob-basic-success",
 				Namespace:       "TestHandleWatchEventNamespace",
 				ResourceVersion: "33547",
@@ -114,7 +114,7 @@ func TestHandleWatchEvent(t *testing.T) {
 		"watcher_name":           "events",
 		"event_type":             "Warning",
 		"reason":                 "Fake Reason: TestHandlePodWatchEvent",
-		"kind":                   "CronJob",
+		"kind":                   CRONJOB,
 		"object_uid":             "f825de34-6728-474a-a28f-8318de23acc1",
 		"namespace":              "TestHandleWatchEventNamespace"}
 
