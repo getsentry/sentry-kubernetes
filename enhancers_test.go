@@ -10,7 +10,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-func TestRunPodEnhancer(t *testing.T) {
+func TestRunEnhancers(t *testing.T) {
 
 	// Create empty context
 	ctx := context.Background()
@@ -45,10 +45,6 @@ func TestRunPodEnhancer(t *testing.T) {
 		t.Fatalf("error injecting pod add: %v", err)
 	}
 	ctx = setClientsetOnContext(ctx, fakeClientset)
-	objRef := &corev1.ObjectReference{
-		Name:      "TestRunPodEnhancerPod",
-		Namespace: "TestRunPodEnhancerNamespace",
-	}
 
 	// Create empty scope
 	scope := sentry.NewScope()
@@ -57,9 +53,9 @@ func TestRunPodEnhancer(t *testing.T) {
 	// Add event message
 	event.Message = "This event is for TestRunPodEnhancer"
 	// Call pod enhancer to modify scope and event
-	err = runPodEnhancer(ctx, objRef, nil, scope, event)
+	err = runEnhancers(ctx, nil, KindPod, podObj, scope, event)
 	if err != nil {
-		t.Errorf("pod enhancer returned an error: %v", err)
+		t.Errorf("runEnhancers returned an error: %v", err)
 	}
 
 	// Apply the scope to the event

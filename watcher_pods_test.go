@@ -79,7 +79,7 @@ func TestHandlePodWatchEvent(t *testing.T) {
 	}
 
 	// the Sentry event message should match that of the container status
-	expectedMsg := "Fake Message: TestHandlePodWatchEvent"
+	expectedMsg := "TestHandlePodWatchEventPod: Fake Message: TestHandlePodWatchEvent"
 	if events[0].Message != expectedMsg {
 		t.Errorf("received %s, wanted %s", events[0].Message, expectedMsg)
 	}

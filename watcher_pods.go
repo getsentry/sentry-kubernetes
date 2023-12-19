@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -33,7 +32,7 @@ func handlePodTerminationEvent(ctx context.Context, containerStatus *v1.Containe
 	}
 
 	setTagIfNotEmpty(scope, "reason", state.Reason)
-	setTagIfNotEmpty(scope, "kind", pod.Kind)
+	setTagIfNotEmpty(scope, "kind", KindPod)
 	setTagIfNotEmpty(scope, "object_uid", string(pod.UID))
 	setTagIfNotEmpty(scope, "namespace", pod.Namespace)
 	setTagIfNotEmpty(scope, "pod_name", pod.Name)
@@ -63,12 +62,7 @@ func handlePodTerminationEvent(ctx context.Context, containerStatus *v1.Containe
 
 func buildSentryEventFromPodTerminationEvent(ctx context.Context, pod *v1.Pod, message string, scope *sentry.Scope) *sentry.Event {
 	sentryEvent := &sentry.Event{Message: message, Level: sentry.LevelError}
-	objectRef := &v1.ObjectReference{
-		Kind:      "Pod",
-		Name:      pod.Name,
-		Namespace: pod.Namespace,
-	}
-	runEnhancers(ctx, objectRef, pod, scope, sentryEvent)
+	runEnhancers(ctx, nil, KindPod, pod, scope, sentryEvent)
 	return sentryEvent
 }
 
@@ -193,13 +187,10 @@ func watchPodsInNamespaceForever(ctx context.Context, config *rest.Config, names
 
 	ctx = setClientsetOnContext(ctx, clientset)
 
-	// Create the informers to integrate with sentry crons
-	if isTruthy(os.Getenv("SENTRY_K8S_MONITOR_CRONJOBS")) {
-		logger.Info().Msgf("Enabling CronJob monitoring")
-		go startCronsInformers(ctx, namespace)
-	} else {
-		logger.Info().Msgf("CronJob monitoring is disabled")
-	}
+	// Start the informers for Sentry event capturing
+	// and caching with the indexers
+	go startInformers(ctx, namespace)
+
 	for {
 		if err := watchPodsInNamespace(ctx, namespace); err != nil {
 			logger.Error().Msgf("Error while watching pods %s: %s", where, err)

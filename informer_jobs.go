@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"os"
 
 	"github.com/rs/zerolog"
 	batchv1 "k8s.io/api/batch/v1"
@@ -50,7 +51,13 @@ func createJobInformer(ctx context.Context, factory informers.SharedInformerFact
 		}
 	}
 
-	jobInformer.AddEventHandler(handler)
+	// Check if cronjob monitoring is enabled
+	if isTruthy(os.Getenv("SENTRY_K8S_MONITOR_CRONJOBS")) {
+		logger.Info().Msgf("Add job informer handlers for cronjob monitoring")
+		jobInformer.AddEventHandler(handler)
+	} else {
+		logger.Info().Msgf("Cronjob monitoring is disabled")
+	}
 
 	return jobInformer, nil
 }

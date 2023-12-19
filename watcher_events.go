@@ -75,12 +75,16 @@ func handleGeneralEvent(ctx context.Context, eventObject *v1.Event, scope *sentr
 
 func buildSentryEventFromGeneralEvent(ctx context.Context, event *v1.Event, scope *sentry.Scope) *sentry.Event {
 	sentryEvent := &sentry.Event{Message: event.Message, Level: sentry.LevelError}
-	objectRef := &v1.ObjectReference{
-		Kind:      event.InvolvedObject.Kind,
-		Name:      event.InvolvedObject.Name,
-		Namespace: event.InvolvedObject.Namespace,
+
+	involvedObj, ok := findObject(ctx, event.InvolvedObject.Kind, event.InvolvedObject.Namespace, event.InvolvedObject.Name)
+
+	// cannot find event
+	if !ok {
+		return sentryEvent
 	}
-	runEnhancers(ctx, objectRef, nil, scope, sentryEvent)
+
+	// run enhancers with the involved object
+	runEnhancers(ctx, event, event.InvolvedObject.Kind, involvedObj, scope, sentryEvent)
 	return sentryEvent
 }
 
@@ -145,10 +149,10 @@ func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1
 	hub.WithScope(func(scope *sentry.Scope) {
 
 		// Find the object meta that the event is about
-		objectMeta, ok := findObjectMeta(ctx, eventObject.InvolvedObject.Kind, eventObject.InvolvedObject.Namespace, eventObject.InvolvedObject.Name)
+		object, ok := findObject(ctx, eventObject.InvolvedObject.Kind, eventObject.InvolvedObject.Namespace, eventObject.InvolvedObject.Name)
 		if ok {
 			// if DSN annotation provided, we bind a new client with that DSN
-			client, ok := dsnClientMapping.GetClientFromObject(ctx, objectMeta, hub.Client().Options())
+			client, ok := dsnClientMapping.GetClientFromObject(ctx, object, hub.Client().Options())
 			if ok {
 				hub.BindClient(client)
 			}
