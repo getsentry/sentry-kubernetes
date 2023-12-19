@@ -13,15 +13,6 @@ import (
 )
 
 var DSNAnnotation = "k8s.sentry.io/dsn"
-
-const (
-	POD        string = "Pod"
-	JOB        string = "Job"
-	CRONJOB    string = "CronJob"
-	REPLICASET string = "ReplicaSet"
-	DEPLOYMENT string = "Deployment"
-)
-
 var dsnClientMapping = NewDsnClientMapping()
 
 // Map from Sentry DSN to Client
@@ -136,13 +127,13 @@ func findObject(ctx context.Context, kind string, namespace string, name string)
 	}
 
 	switch kind {
-	case POD:
+	case KindPod:
 		pod, err := clientset.CoreV1().Pods(namespace).Get(context.Background(), name, metav1.GetOptions{})
 		if err != nil {
 			return nil, false
 		}
 		return pod, true
-	case REPLICASET:
+	case KindReplicaset:
 		var replicaSet *v1.ReplicaSet
 		// Check if the replicaset is available in the indexer first
 		if replicasetInformer != nil {
@@ -159,7 +150,7 @@ func findObject(ctx context.Context, kind string, namespace string, name string)
 			}
 		}
 		return replicaSet, true
-	case DEPLOYMENT:
+	case KindDeployment:
 		var deployment *v1.Deployment
 		// Check if the deployment is available in the indexer first
 		if deploymentInformer != nil {
@@ -177,7 +168,7 @@ func findObject(ctx context.Context, kind string, namespace string, name string)
 			}
 		}
 		return deployment, true
-	case JOB:
+	case KindJob:
 		var job *batchv1.Job
 		// Check if the job is available in the indexer first
 		if jobInformer != nil {
@@ -194,7 +185,7 @@ func findObject(ctx context.Context, kind string, namespace string, name string)
 			}
 		}
 		return job, true
-	case CRONJOB:
+	case KindCronjob:
 		var cronjob *batchv1.CronJob
 		// Check if the cronjob is available in the indexer first
 		if cronjobInformer != nil {

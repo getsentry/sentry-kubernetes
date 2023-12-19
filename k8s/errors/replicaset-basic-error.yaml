@@ -3,7 +3,8 @@ kind: ReplicaSet
 metadata:
   name: replicaset-basic-error
   labels:
-    app: test-pod
+    run: replicaset-basic-error
+    type: test-pod
   annotations:
       k8s.sentry.io/dsn: "https://474d9da00094c5e39d6800c01f3aeff6@o4506191942320128.ingest.sentry.io/4506363396816896"
 spec:
