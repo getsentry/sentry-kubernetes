@@ -53,7 +53,7 @@ func TestRunEnhancers(t *testing.T) {
 	// Add event message
 	event.Message = "This event is for TestRunPodEnhancer"
 	// Call pod enhancer to modify scope and event
-	err = runEnhancers(ctx, nil, "Pod", podObj, scope, event)
+	err = runEnhancers(ctx, nil, KindPod, podObj, scope, event)
 	if err != nil {
 		t.Errorf("runEnhancers returned an error: %v", err)
 	}
