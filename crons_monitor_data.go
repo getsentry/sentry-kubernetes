@@ -64,7 +64,7 @@ func (c *CronsMonitorData) addJob(job *batchv1.Job, checkinId sentry.EventID) er
 }
 
 // Wrapper struct over crons monitor map that
-// handles syncrhonization
+// handles synchronization
 type CronsMetaData struct {
 	mutex               *sync.RWMutex
 	cronsMonitorDataMap map[string]*CronsMonitorData
