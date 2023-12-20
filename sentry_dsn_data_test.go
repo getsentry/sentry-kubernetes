@@ -14,7 +14,7 @@ import (
 
 func TestNewDsnClientMapping(t *testing.T) {
 
-	// set the custom dsn flag as true
+	// Set the custom dsn flag as true
 	t.Setenv("SENTRY_K8S_CUSTOM_DSNS", "TRUE")
 	clientMapping := NewDsnClientMapping()
 	if clientMapping.clientMap == nil {
@@ -80,6 +80,147 @@ func TestGetClientFromMap(t *testing.T) {
 	if client.Options().Dsn != fakeDsn {
 		t.Errorf("Failed to retrieve client with correct DSN")
 	}
+}
+
+func TestGetClientFromObject(t *testing.T) {
+
+	// Set the custom dsn flag as true
+	t.Setenv("SENTRY_K8S_CUSTOM_DSNS", "TRUE")
+	clientMapping := NewDsnClientMapping()
+	fakeDsn := "https://c6f9a148ee0775891414b50b9af35959@o4506191942320128.ingest.sentry.io/1234567890"
+
+	// Create empty context
+	ctx := context.Background()
+	// Create simple fake client
+	fakeClientset := fake.NewSimpleClientset()
+
+	// Create annotation map that includes the DSN
+	annotations := make(map[string]string)
+	annotations["k8s.sentry.io/dsn"] = fakeDsn
+
+	// Create replicaset object with DSN annotation
+	var replicas int32 = 3
+	replicasetObj := &v1.ReplicaSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "TestSearchDsnReplicaset",
+			Namespace:   "TestSearchDsnNamespace",
+			Annotations: annotations,
+		},
+		Spec: v1.ReplicaSetSpec{
+			Replicas: &replicas,
+		},
+		Status: v1.ReplicaSetStatus{
+			Replicas: replicas,
+		},
+	}
+
+	// Add the replicaset object to the fake clientset
+	_, err := fakeClientset.AppsV1().ReplicaSets("TestSearchDsnNamespace").Create(context.TODO(), replicasetObj, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Error injecting replicaset add: %v", err)
+	}
+	ctx = setClientsetOnContext(ctx, fakeClientset)
+
+	// Create client options with DSN
+	clientOptions := sentry.ClientOptions{
+		Dsn: fakeDsn,
+	}
+
+	// Test function to retrieve client from object using DSN
+	firstClient, ok := clientMapping.GetClientFromObject(ctx, replicasetObj, clientOptions)
+	if !ok {
+		t.Errorf("The function failed to create and retrieve new client from object")
+	}
+	if firstClient.Options().Dsn != fakeDsn {
+		t.Errorf("The retrieved client has the incorrect DSN")
+	}
+	secondClient, ok := clientMapping.GetClientFromObject(ctx, replicasetObj, clientOptions)
+	if !ok {
+		t.Errorf("The function failed to retrieve existing client from object")
+	}
+	if !reflect.DeepEqual(firstClient, secondClient) {
+		t.Errorf("The function failed to retrieve the client it originally created")
+	}
+
+}
+
+func TestSearchDsn(t *testing.T) {
+
+	// Create empty context
+	ctx := context.Background()
+	// Create simple fake client
+	fakeClientset := fake.NewSimpleClientset()
+
+	fakeDsn := "https://c6f9a148ee0775891414b50b9af35959@o4506191942320128.ingest.sentry.io/1234567890"
+
+	// Create annotation map that includes the DSN
+	annotations := make(map[string]string)
+	annotations["k8s.sentry.io/dsn"] = fakeDsn
+
+	// Create pod object with replicaset as owning reference
+	podObj := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "TestSearchDsnPod",
+			Namespace: "TestSearchDsnNamespace",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Kind: "ReplicaSet",
+					Name: "TestSearchDsnReplicaset",
+				},
+			},
+		},
+		Spec: corev1.PodSpec{
+			NodeName: "TestSearchDsnNode",
+		},
+	}
+
+	var replicas int32 = 3
+	replicasetObj := &v1.ReplicaSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "TestSearchDsnReplicaset",
+			Namespace:   "TestSearchDsnNamespace",
+			Annotations: annotations,
+		},
+		Spec: v1.ReplicaSetSpec{
+			Replicas: &replicas,
+		},
+		Status: v1.ReplicaSetStatus{
+			Replicas: replicas,
+		},
+	}
+
+	_, err := fakeClientset.CoreV1().Pods("TestSearchDsnNamespace").Create(context.TODO(), podObj, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Error injecting pod add: %v", err)
+	}
+	_, err = fakeClientset.AppsV1().ReplicaSets("TestSearchDsnNamespace").Create(context.TODO(), replicasetObj, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Error injecting replicaset add: %v", err)
+	}
+
+	ctx = setClientsetOnContext(ctx, fakeClientset)
+
+	// The replicaset contains the annotation for the DSN
+	replicasetDsn, err := searchDsn(ctx, replicasetObj)
+	if err != nil {
+		t.Error(err)
+		t.Errorf("Failed to find replicaset's owning object's DSN")
+	}
+	if replicasetDsn != fakeDsn {
+		t.Errorf("DSN expected: %s, actual: %s", fakeDsn, replicasetDsn)
+	}
+
+	// The pod object does not itself contain the DSN annotation
+	// but its owning object (replicaset) contains the DSN
+	podDsn, err := searchDsn(ctx, podObj)
+	if err != nil {
+		t.Error(err)
+		t.Errorf("Failed to find pod's owning object's DSN")
+	}
+	if podDsn != fakeDsn {
+		t.Errorf("DSN expected: %s, actual: %s", fakeDsn, podDsn)
+	}
+
 }
 
 func TestFindObject(t *testing.T) {

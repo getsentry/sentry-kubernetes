@@ -35,3 +35,6 @@ notes.txt
 
 # dotenv files
 .env
+
+# vscode
+.vscode/
