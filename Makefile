@@ -55,3 +55,7 @@ fmt: ## Run "go fmt"
 	go fmt ./...; \
 		git diff --exit-code;
 .PHONY: fmt
+
+lint: ## Lint (using "golangci-lint")
+	golangci-lint run -v
+.PHONY: lint
