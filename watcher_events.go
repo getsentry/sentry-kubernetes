@@ -78,12 +78,15 @@ func buildSentryEventFromGeneralEvent(ctx context.Context, event *v1.Event, scop
 
 	involvedObj, ok := findObject(ctx, event.InvolvedObject.Kind, event.InvolvedObject.Namespace, event.InvolvedObject.Name)
 
-	// cannot find event
+	// Cannot find the involved object related to the event
+	// note: this may mean the object is not a supported kind
+	// (e.g. Node, Service, StatefulSets)
 	if !ok {
+		runCommonEnhancer(ctx, scope, sentryEvent)
 		return sentryEvent
 	}
 
-	// run enhancers with the involved object
+	// Run enhancers with the involved object
 	runEnhancers(ctx, event, event.InvolvedObject.Kind, involvedObj, scope, sentryEvent)
 	return sentryEvent
 }

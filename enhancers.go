@@ -57,11 +57,19 @@ func runEnhancers(ctx context.Context, eventObject *v1.Event, kind string, objec
 		return err
 	}
 
+	// Might reset back to old fingerprint if
+	// there exists root owner(s) to the object
+	oldFingerprint := sentryEvent.Fingerprint
 	// Call the specific enhancer for the object
 	callObjectEnhancer(ctx, scope, &KindObjectPair{
 		kind,
 		object,
 	}, sentryEvent)
+	// Remove any fingerprinting so the event
+	// can be grouped by its owners instead
+	if len(rootOwners) != 0 {
+		sentryEvent.Fingerprint = oldFingerprint
+	}
 
 	// Call specific enhancers for all root owners
 	// (there most likely is just one root owner)
@@ -79,15 +87,18 @@ type KindObjectPair struct {
 	object metav1.Object
 }
 
+// Finds the root owning objects of an object
+// and returns an empty slice if the object has
+// no owning objects
 func findRootOwners(ctx context.Context, kindObjPair *KindObjectPair) ([]KindObjectPair, error) {
 
-	// use DFS to find the leaves of the owner references graph
+	// Use DFS to find the leaves of the owner references graph
 	rootOwners, err := ownerRefDFS(ctx, kindObjPair)
 	if err != nil {
 		return nil, err
 	}
 
-	// if the object has no owner references
+	// If the object has no owner references
 	if rootOwners[0].object.GetUID() == kindObjPair.object.GetUID() {
 		return []KindObjectPair{}, nil
 	}
@@ -96,7 +107,7 @@ func findRootOwners(ctx context.Context, kindObjPair *KindObjectPair) ([]KindObj
 
 }
 
-// this function finds performs DFS to find the leaves the owner references graph
+// Performs DFS to find the leaves the owner references graph
 func ownerRefDFS(ctx context.Context, kindObjPair *KindObjectPair) ([]KindObjectPair, error) {
 
 	parents := kindObjPair.object.GetOwnerReferences()
@@ -189,10 +200,10 @@ func podEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object,
 	nodeName := podObj.Spec.NodeName
 	setTagIfNotEmpty(scope, "node_name", nodeName)
 
-	// Add the cronjob to the fingerprint
+	// Add the pod name to the fingerprint
 	sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, KindPod, podObj.Name)
 
-	// Add the cronjob to the tag
+	// Add the pod to the tag
 	setTagIfNotEmpty(scope, "pod_name", object.GetName())
 	podObj.ManagedFields = []metav1.ManagedFieldsEntry{}
 	metadataJson, err := prettyJson(podObj.ObjectMeta)
@@ -202,7 +213,7 @@ func podEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object,
 		})
 	}
 
-	// Add breadcrumb with cronjob timestamps
+	// Add breadcrumb with pod timestamps
 	scope.AddBreadcrumb(&sentry.Breadcrumb{
 		Message:   fmt.Sprintf("Created pod %s", object.GetName()),
 		Level:     sentry.LevelInfo,
@@ -221,10 +232,10 @@ func jobEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object,
 		return errors.New("failed to cast object to Job object")
 	}
 
-	// Add the cronjob to the fingerprint
+	// Add the job to the fingerprint
 	sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, KindJob, jobObj.Name)
 
-	// Add the cronjob to the tag
+	// Add the job to the tag
 	setTagIfNotEmpty(scope, "job_name", object.GetName())
 	jobObj.ManagedFields = []metav1.ManagedFieldsEntry{}
 	metadataJson, err := prettyJson(jobObj.ObjectMeta)
@@ -234,7 +245,7 @@ func jobEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object,
 		})
 	}
 
-	// Add breadcrumb with cronjob timestamps
+	// Add breadcrumb with job timestamps
 	scope.AddBreadcrumb(&sentry.Breadcrumb{
 		Message:   fmt.Sprintf("Created job %s", object.GetName()),
 		Level:     sentry.LevelInfo,
@@ -286,10 +297,10 @@ func replicaSetEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.
 		return errors.New("failed to cast object to ReplicaSet object")
 	}
 
-	// Add the cronjob to the fingerprint
+	// Add the replicaset to the fingerprint
 	sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, KindReplicaset, replicasetObj.Name)
 
-	// Add the cronjob to the tag
+	// Add the replicaset to the tag
 	setTagIfNotEmpty(scope, "replicaset_name", object.GetName())
 	replicasetObj.ManagedFields = []metav1.ManagedFieldsEntry{}
 	metadataJson, err := prettyJson(replicasetObj.ObjectMeta)
@@ -299,7 +310,7 @@ func replicaSetEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.
 		})
 	}
 
-	// Add breadcrumb with cronjob timestamps
+	// Add breadcrumb with replicaset timestamps
 	scope.AddBreadcrumb(&sentry.Breadcrumb{
 		Message:   fmt.Sprintf("Created replicaset %s", object.GetName()),
 		Level:     sentry.LevelInfo,
@@ -315,10 +326,10 @@ func deploymentEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.
 	if !ok {
 		return errors.New("failed to cast object to Deployment object")
 	}
-	// Add the cronjob to the fingerprint
+	// Add the deployment to the fingerprint
 	sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, KindDeployment, deploymentObj.Name)
 
-	// Add the cronjob to the tag
+	// Add the deployment to the tag
 	setTagIfNotEmpty(scope, "deployment_name", object.GetName())
 	deploymentObj.ManagedFields = []metav1.ManagedFieldsEntry{}
 	metadataJson, err := prettyJson(deploymentObj.ObjectMeta)
@@ -328,7 +339,7 @@ func deploymentEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.
 		})
 	}
 
-	// Add breadcrumb with cronjob timestamps
+	// Add breadcrumb with deployment timestamps
 	scope.AddBreadcrumb(&sentry.Breadcrumb{
 		Message:   fmt.Sprintf("Created deployment %s", object.GetName()),
 		Level:     sentry.LevelInfo,
