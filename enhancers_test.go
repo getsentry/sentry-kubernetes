@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/getsentry/sentry-go"
+	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
@@ -95,4 +96,126 @@ func TestRunEnhancers(t *testing.T) {
 	if event.Message != expectedMessage {
 		t.Errorf("For event message, received \"%s\", wanted \"%s\"", event.Message, expectedMessage)
 	}
+}
+
+func TestFindRootOwner(t *testing.T) {
+	// Create empty context
+	ctx := context.Background()
+	// Create simple fake client
+	fakeClientset := fake.NewSimpleClientset()
+
+	// Create pod object with no owning references
+	podObj := &corev1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "Pod",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "TestFindRootOwnerPod",
+			Namespace: "TestFindRootOwnerNamespace",
+		},
+		Spec: corev1.PodSpec{
+			NodeName: "TestFindRootOwnerNode",
+		},
+	}
+
+	_, err := fakeClientset.CoreV1().Pods("TestFindRootOwnerNamespace").Create(context.TODO(), podObj, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Error injecting pod add: %v", err)
+	}
+
+	ctx = setClientsetOnContext(ctx, fakeClientset)
+
+	// Check the findRootOwners function does not return a slice
+	// with pod which is the object passed in since it has no
+	// owning references
+	rootOwners, err := findRootOwners(ctx, &KindObjectPair{
+		kind:   "Pod",
+		object: podObj,
+	})
+	if err != nil {
+		t.Errorf("Function returned error: %#v", err)
+	}
+	if len(rootOwners) != 0 {
+		t.Errorf("Function did not return empty slice as expected")
+	}
+
+}
+
+func TestOwnerRefDFS(t *testing.T) {
+
+	// Create empty context
+	ctx := context.Background()
+	// Create simple fake client
+	fakeClientset := fake.NewSimpleClientset()
+
+	// Create pod object with replicaset as owning reference
+	podObj := &corev1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "Pod",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "TestOwnerRefDFSPod",
+			Namespace: "TestOwnerRefDFSNamespace",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Kind: "ReplicaSet",
+					Name: "TestOwnerRefDFSReplicaset",
+				},
+			},
+		},
+		Spec: corev1.PodSpec{
+			NodeName: "TestOwnerRefDFSNode",
+		},
+	}
+
+	var replicas int32 = 3
+	replicasetObj := &v1.ReplicaSet{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "ReplicaSet",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "TestOwnerRefDFSReplicaset",
+			Namespace: "TestOwnerRefDFSNamespace",
+		},
+		Spec: v1.ReplicaSetSpec{
+			Replicas: &replicas,
+		},
+		Status: v1.ReplicaSetStatus{
+			Replicas: replicas,
+		},
+	}
+
+	_, err := fakeClientset.CoreV1().Pods("TestOwnerRefDFSNamespace").Create(context.TODO(), podObj, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Error injecting pod add: %v", err)
+	}
+	_, err = fakeClientset.AppsV1().ReplicaSets("TestOwnerRefDFSNamespace").Create(context.TODO(), replicasetObj, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Error injecting replicaset add: %v", err)
+	}
+
+	ctx = setClientsetOnContext(ctx, fakeClientset)
+
+	rootOwners, err := ownerRefDFS(ctx, &KindObjectPair{
+		kind:   podObj.Kind,
+		object: podObj,
+	})
+	if err != nil {
+		t.Errorf("the DFS produced an error: %#v", err)
+	}
+	if rootOwners == nil {
+		t.Errorf("Failed to return a slice of root owners: %#v", err)
+		return
+	}
+	if len(rootOwners) != 1 {
+		t.Errorf("Failed to produce correct number of root owners")
+		return
+	}
+	if rootOwners[0].kind != replicasetObj.Kind {
+		t.Errorf("The root owner's kind is incorrect")
+	}
+	if rootOwners[0].object.GetName() != replicasetObj.Name {
+		t.Errorf("The root owner's object is incorrect")
+	}
+
 }
