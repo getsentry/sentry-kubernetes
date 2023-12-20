@@ -76,15 +76,14 @@ func handleGeneralEvent(ctx context.Context, eventObject *v1.Event, scope *sentr
 func buildSentryEventFromGeneralEvent(ctx context.Context, event *v1.Event, scope *sentry.Scope) *sentry.Event {
 	sentryEvent := &sentry.Event{Message: event.Message, Level: sentry.LevelError}
 
-	involvedObj, ok := findObject(ctx, event.InvolvedObject.Kind, event.InvolvedObject.Namespace, event.InvolvedObject.Name)
+	involvedObj, _ := findObject(ctx, event.InvolvedObject.Kind, event.InvolvedObject.Namespace, event.InvolvedObject.Name)
 
-	// cannot find event
-	if !ok {
-		return sentryEvent
-	}
-
-	// run enhancers with the involved object
+	// Run enhancers on the event
+	// note: the involved object may be unsupported
+	// in which case it would be nil but that is handled
+	// correctly in the enhancers
 	runEnhancers(ctx, event, event.InvolvedObject.Kind, involvedObj, scope, sentryEvent)
+
 	return sentryEvent
 }
 
