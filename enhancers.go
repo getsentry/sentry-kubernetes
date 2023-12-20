@@ -15,7 +15,6 @@ import (
 const breadcrumbLimit = 20
 
 func runEnhancers(ctx context.Context, eventObject *v1.Event, kind string, object metav1.Object, scope *sentry.Scope, sentryEvent *sentry.Event) error {
-
 	involvedObject := fmt.Sprintf("%s/%s", kind, object.GetName())
 	ctx, logger := getLoggerWithTag(ctx, "object", involvedObject)
 	logger.Debug().Msgf("Running the enhancer")
@@ -80,7 +79,6 @@ type KindObjectPair struct {
 }
 
 func findRootOwners(ctx context.Context, kindObjPair *KindObjectPair) ([]KindObjectPair, error) {
-
 	// use DFS to find the leaves of the owner references graph
 	rootOwners, err := ownerRefDFS(ctx, kindObjPair)
 	if err != nil {
@@ -93,12 +91,10 @@ func findRootOwners(ctx context.Context, kindObjPair *KindObjectPair) ([]KindObj
 	}
 
 	return rootOwners, nil
-
 }
 
 // this function finds performs DFS to find the leaves the owner references graph
 func ownerRefDFS(ctx context.Context, kindObjPair *KindObjectPair) ([]KindObjectPair, error) {
-
 	parents := kindObjPair.object.GetOwnerReferences()
 	// the owners slice to be returned
 	rootOwners := []KindObjectPair{}
@@ -130,7 +126,6 @@ func ownerRefDFS(ctx context.Context, kindObjPair *KindObjectPair) ([]KindObject
 }
 
 func callObjectEnhancer(ctx context.Context, scope *sentry.Scope, kindObjectPair *KindObjectPair, sentryEvent *sentry.Event) error {
-
 	var err error = nil
 	switch kindObjectPair.kind {
 	case KindPod:
@@ -215,7 +210,6 @@ func podEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object,
 }
 
 func jobEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
-
 	jobObj, ok := object.(*batchv1.Job)
 	if !ok {
 		return errors.New("failed to cast object to Job object")
@@ -245,7 +239,6 @@ func jobEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object,
 }
 
 func cronjobEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
-
 	cronjobObj, ok := object.(*batchv1.CronJob)
 	if !ok {
 		return errors.New("failed to cast object to CronJob object")
@@ -280,7 +273,6 @@ func cronjobEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Obj
 }
 
 func replicaSetEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
-
 	replicasetObj, ok := object.(*appsv1.ReplicaSet)
 	if !ok {
 		return errors.New("failed to cast object to ReplicaSet object")
@@ -310,7 +302,6 @@ func replicaSetEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.
 }
 
 func deploymentEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
-
 	deploymentObj, ok := object.(*appsv1.Deployment)
 	if !ok {
 		return errors.New("failed to cast object to Deployment object")

@@ -12,7 +12,6 @@ import (
 )
 
 func createCronjobInformer(ctx context.Context, factory informers.SharedInformerFactory, namespace string) (cache.SharedIndexInformer, error) {
-
 	logger := zerolog.Ctx(ctx)
 
 	logger.Debug().Msgf("Starting cronjob informer\n")

@@ -64,7 +64,6 @@ func (d *DsnClientMapping) GetClientFromMap(dsn string) (*sentry.Client, bool) {
 }
 
 func (d *DsnClientMapping) GetClientFromObject(ctx context.Context, object metav1.Object, clientOptions sentry.ClientOptions) (*sentry.Client, bool) {
-
 	// If the custom DSN flag is set to false
 	// then avoid searching for the custom DSN
 	// or adding an alternative client and instead
@@ -99,7 +98,6 @@ func (d *DsnClientMapping) GetClientFromObject(ctx context.Context, object metav
 
 // Recursive function to find if there is a DSN annotation
 func searchDsn(ctx context.Context, obj metav1.Object) (string, error) {
-
 	dsn, ok := obj.GetAnnotations()[DSNAnnotation]
 	if ok {
 		return dsn, nil
@@ -120,7 +118,6 @@ func searchDsn(ctx context.Context, obj metav1.Object) (string, error) {
 }
 
 func findObject(ctx context.Context, kind string, namespace string, name string) (metav1.Object, bool) {
-
 	clientset, err := getClientsetFromContext(ctx)
 	if err != nil {
 		return nil, false
@@ -157,7 +154,6 @@ func findObject(ctx context.Context, kind string, namespace string, name string)
 			obj, ok, err := deploymentInformer.GetIndexer().GetByKey(namespace + "/" + name)
 			if ok && err == nil {
 				deployment = obj.(*v1.Deployment)
-
 			}
 		}
 		if deployment == nil {

@@ -12,7 +12,6 @@ import (
 )
 
 func createJobInformer(ctx context.Context, factory informers.SharedInformerFactory, namespace string) (cache.SharedIndexInformer, error) {
-
 	logger := zerolog.Ctx(ctx)
 
 	logger.Debug().Msgf("starting job informer\n")
@@ -31,7 +30,6 @@ func createJobInformer(ctx context.Context, factory informers.SharedInformerFact
 	}
 
 	handler.UpdateFunc = func(oldObj, newObj interface{}) {
-
 		oldJob := oldObj.(*batchv1.Job)
 		newJob := newObj.(*batchv1.Job)
 
