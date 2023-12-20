@@ -5,11 +5,82 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/getsentry/sentry-go"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 )
+
+func TestNewDsnClientMapping(t *testing.T) {
+
+	// set the custom dsn flag as true
+	t.Setenv("SENTRY_K8S_CUSTOM_DSNS", "TRUE")
+	clientMapping := NewDsnClientMapping()
+	if clientMapping.clientMap == nil {
+		t.Errorf("Failed to initialize client mapping")
+	}
+	if !clientMapping.customDsnFlag {
+		t.Errorf("Failed to read custom dsn flag as true")
+	}
+
+	// set the custom dsn flag as false
+	t.Setenv("SENTRY_K8S_CUSTOM_DSNS", "")
+	clientMapping = NewDsnClientMapping()
+	if clientMapping.customDsnFlag {
+		t.Errorf("Failed to read custom dsn flag as false")
+	}
+
+}
+
+func TestAddClientToMap(t *testing.T) {
+
+	fakeDsn := "https://c6f9a148ee0775891414b50b9af35959@o4506191942320128.ingest.sentry.io/1234567890"
+	clientOptions := sentry.ClientOptions{
+		Dsn: fakeDsn,
+	}
+	clientMapping := NewDsnClientMapping()
+
+	// Add the dsn for the first time
+	clientMapping.AddClientToMap(clientOptions)
+	firstClient, ok := clientMapping.clientMap[fakeDsn]
+	if !ok {
+		t.Errorf("Failed to add the fake dsn to the client map")
+	}
+	if firstClient.Options().Dsn != fakeDsn {
+		t.Errorf("The DSN in the added client is incorrect")
+	}
+
+	// Try to add the same dsn again, which should create a new client
+	clientMapping.AddClientToMap(clientOptions)
+	secondClient, ok := clientMapping.clientMap[fakeDsn]
+	if !ok {
+		t.Errorf("Failed to add client if dsn already exists in the map")
+	}
+	if firstClient == secondClient {
+		t.Errorf("Failed to create new client if the dsn already exists")
+	}
+}
+
+func TestGetClientFromMap(t *testing.T) {
+	fakeDsn := "https://c6f9a148ee0775891414b50b9af35959@o4506191942320128.ingest.sentry.io/1234567890"
+	clientOptions := sentry.ClientOptions{
+		Dsn: fakeDsn,
+	}
+	clientMapping := NewDsnClientMapping()
+
+	// Add the DSN and its corresponding client
+	clientMapping.AddClientToMap(clientOptions)
+
+	// Test function to retrieve the client with DSN
+	client, ok := clientMapping.GetClientFromMap(fakeDsn)
+	if !ok {
+		t.Errorf("Failed to retrieve a client")
+	}
+	if client.Options().Dsn != fakeDsn {
+		t.Errorf("Failed to retrieve client with correct DSN")
+	}
+}
 
 func TestFindObject(t *testing.T) {
 
