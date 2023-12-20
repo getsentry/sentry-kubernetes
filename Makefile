@@ -34,7 +34,7 @@ clean-report-dir: $(COVERAGE_REPORT_DIR)
 	test $(COVERAGE_REPORT_DIR) && rm -f $(COVERAGE_REPORT_DIR)/*
 test-coverage: $(COVERAGE_REPORT_DIR) clean-report-dir  ## Test with coverage enabled
 	set -e ; \
-	go test -count=1 -timeout $(TIMEOUT)s -coverpkg=./... -covermode=$(COVERAGE_MODE) -coverprofile="$(COVERAGE_REPORT_FILE_ABS)" ./... ; \
+	go test -count=1 -race -timeout $(TIMEOUT)s -coverpkg=./... -covermode=$(COVERAGE_MODE) -coverprofile="$(COVERAGE_REPORT_FILE_ABS)" ./... ; \
 	go tool cover -html="$(COVERAGE_REPORT_FILE_ABS)" -o "$(COVERAGE_REPORT_DIR_ABS)/coverage.html";
 .PHONY: test-coverage clean-report-dir
 
