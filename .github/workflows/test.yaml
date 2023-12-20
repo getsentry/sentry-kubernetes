@@ -32,6 +32,13 @@ jobs:
         run: make mod-tidy
       - name: Test
         run: make test
+      - name: Upload coverage reports to Codecov
+        # https://github.com/codecov/codecov-action/releases/tag/v3.1.4
+        uses: codecov/codecov-action@eaaf4bedf32dbdc6b720b63067d99c4d77d6047d
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          directory: .coverage
     timeout-minutes: 10
     strategy:
       matrix:
