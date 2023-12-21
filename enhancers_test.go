@@ -125,7 +125,6 @@ func TestRunEnhancers(t *testing.T) {
 	if event.Message != expectedMessage {
 		t.Errorf("For event message, received \"%s\", wanted \"%s\"", event.Message, expectedMessage)
 	}
-
 }
 
 func TestFindRootOwner(t *testing.T) {
