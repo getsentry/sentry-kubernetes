@@ -57,5 +57,9 @@ fmt: ## Run "go fmt"
 .PHONY: fmt
 
 lint: ## Lint (using "golangci-lint")
-	golangci-lint run -v
+	golangci-lint run -v $(ARGS)
 .PHONY: lint
+
+lint-fix: ARGS=--fix
+lint-fix: lint ### Lint and apply fixes (when applicable)
+.PHONY: lint-fix
