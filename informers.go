@@ -18,7 +18,6 @@ var deploymentInformer cache.SharedIndexInformer
 // if we opt into cronjob, attach the job/cronjob event handlers
 // and add to the crons monitor data struct for Sentry Crons
 func startInformers(ctx context.Context, namespace string) error {
-
 	clientset, err := getClientsetFromContext(ctx)
 	if err != nil {
 		return errors.New("failed to get clientset")

@@ -10,7 +10,6 @@ import (
 )
 
 func createReplicasetInformer(ctx context.Context, factory informers.SharedInformerFactory, namespace string) (cache.SharedIndexInformer, error) {
-
 	logger := zerolog.Ctx(ctx)
 
 	logger.Debug().Msgf("starting replicaset informer\n")

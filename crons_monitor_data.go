@@ -34,7 +34,6 @@ type CronsMonitorData struct {
 
 // Constructor for cronsMonitorData
 func NewCronsMonitorData(monitorSlug string, schedule string, completions *int32) *CronsMonitorData {
-
 	// Get required number of pods to complete
 	var requiredCompletions int32
 	if completions == nil {

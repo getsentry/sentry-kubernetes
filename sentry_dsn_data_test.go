@@ -13,7 +13,6 @@ import (
 )
 
 func TestNewDsnClientMapping(t *testing.T) {
-
 	// Set the custom dsn flag as true
 	t.Setenv("SENTRY_K8S_CUSTOM_DSNS", "TRUE")
 	clientMapping := NewDsnClientMapping()
@@ -30,11 +29,9 @@ func TestNewDsnClientMapping(t *testing.T) {
 	if clientMapping.customDsnFlag {
 		t.Errorf("Failed to read custom dsn flag as false")
 	}
-
 }
 
 func TestAddClientToMap(t *testing.T) {
-
 	fakeDsn := "https://c6f9a148ee0775891414b50b9af35959@o4506191942320128.ingest.sentry.io/1234567890"
 	clientOptions := sentry.ClientOptions{
 		Dsn: fakeDsn,
@@ -83,7 +80,6 @@ func TestGetClientFromMap(t *testing.T) {
 }
 
 func TestGetClientFromObject(t *testing.T) {
-
 	// Set the custom dsn flag as true
 	t.Setenv("SENTRY_K8S_CUSTOM_DSNS", "TRUE")
 	clientMapping := NewDsnClientMapping()
@@ -141,11 +137,9 @@ func TestGetClientFromObject(t *testing.T) {
 	if !reflect.DeepEqual(firstClient, secondClient) {
 		t.Errorf("The function failed to retrieve the client it originally created")
 	}
-
 }
 
 func TestSearchDsn(t *testing.T) {
-
 	// Create empty context
 	ctx := context.Background()
 	// Create simple fake client
@@ -220,11 +214,9 @@ func TestSearchDsn(t *testing.T) {
 	if podDsn != fakeDsn {
 		t.Errorf("DSN expected: %s, actual: %s", fakeDsn, podDsn)
 	}
-
 }
 
 func TestFindObject(t *testing.T) {
-
 	// Create empty context
 	ctx := context.Background()
 	// Create simple fake client

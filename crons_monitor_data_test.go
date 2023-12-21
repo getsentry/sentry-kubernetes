@@ -9,7 +9,6 @@ import (
 )
 
 func TestNewCronsJobData(t *testing.T) {
-
 	fakeId := "080181f33ca343f89b0bf55d50abfeee"
 
 	cronsJobData := NewCronsJobData(sentry.EventID(fakeId))
@@ -23,7 +22,6 @@ func TestNewCronsJobData(t *testing.T) {
 }
 
 func TestGetCheckinId(t *testing.T) {
-
 	fakeId := "080181f33ca343f89b0bf55d50abfeee"
 
 	cronsJobData := NewCronsJobData(sentry.EventID(fakeId))
@@ -37,7 +35,6 @@ func TestGetCheckinId(t *testing.T) {
 }
 
 func TestNewCronsMonitorData(t *testing.T) {
-
 	fakeMonitorSlug := "cronjob-slug"
 	fakeSchedule := "* * * * *"
 	var fakeCompletions int32 = 3
@@ -59,7 +56,6 @@ func TestNewCronsMonitorData(t *testing.T) {
 }
 
 func TestAddJob(t *testing.T) {
-
 	fakeId := "080181f33ca343f89b0bf55d50abfeee"
 	fakeMonitorSlug := "cronjob-slug"
 	fakeSchedule := "* * * * *"
@@ -84,7 +80,6 @@ func TestAddJob(t *testing.T) {
 }
 
 func TestNewCronsMetaData(t *testing.T) {
-
 	cronsMetaData := NewCronsMetaData()
 	if cronsMetaData.cronsMonitorDataMap == nil {
 		t.Errorf("Failed to create cronsMonitorDataMap")
@@ -92,7 +87,6 @@ func TestNewCronsMetaData(t *testing.T) {
 }
 
 func TestAddCronsMonitorData(t *testing.T) {
-
 	cronsMetaData := NewCronsMetaData()
 	if cronsMetaData.cronsMonitorDataMap == nil {
 		t.Errorf("Failed to create cronsMonitorDataMap")
@@ -115,7 +109,6 @@ func TestAddCronsMonitorData(t *testing.T) {
 }
 
 func TestDeleteCronsMonitorData(t *testing.T) {
-
 	cronsMetaData := NewCronsMetaData()
 	if cronsMetaData.cronsMonitorDataMap == nil {
 		t.Errorf("Failed to create cronsMonitorDataMap")
@@ -135,11 +128,9 @@ func TestDeleteCronsMonitorData(t *testing.T) {
 	if ok {
 		t.Errorf("Failed to delete cronsMonitorData from map")
 	}
-
 }
 
 func TestGetCronsMonitorData(t *testing.T) {
-
 	cronsMetaData := NewCronsMetaData()
 	if cronsMetaData.cronsMonitorDataMap == nil {
 		t.Errorf("Failed to create cronsMonitorDataMap")
@@ -159,5 +150,4 @@ func TestGetCronsMonitorData(t *testing.T) {
 	if retCronsMonitorData != cronsMonitorData {
 		t.Errorf("Failed to get correct cronsMonitorData to map")
 	}
-
 }
