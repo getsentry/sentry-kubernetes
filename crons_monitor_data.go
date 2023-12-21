@@ -62,11 +62,18 @@ func (c *CronsMonitorData) addJob(job *batchv1.Job, checkinId sentry.EventID) er
 	return nil
 }
 
-// wrapper struct over crons monitor map that
-// handles syncrhonization
+// Wrapper struct over crons monitor map that
+// handles synchronization
 type CronsMetaData struct {
 	mutex               *sync.RWMutex
 	cronsMonitorDataMap map[string]*CronsMonitorData
+}
+
+func NewCronsMetaData() *CronsMetaData {
+	return &CronsMetaData{
+		mutex:               &sync.RWMutex{},
+		cronsMonitorDataMap: make(map[string]*CronsMonitorData),
+	}
 }
 
 func (c *CronsMetaData) addCronsMonitorData(cronjobName string, newCronsMonitorData *CronsMonitorData) {
@@ -86,11 +93,4 @@ func (c *CronsMetaData) getCronsMonitorData(cronjobName string) (*CronsMonitorDa
 	defer c.mutex.RUnlock()
 	cronsMonitorData, ok := c.cronsMonitorDataMap[cronjobName]
 	return cronsMonitorData, ok
-}
-
-func NewCronsMetaData() *CronsMetaData {
-	return &CronsMetaData{
-		mutex:               &sync.RWMutex{},
-		cronsMonitorDataMap: make(map[string]*CronsMonitorData),
-	}
 }
