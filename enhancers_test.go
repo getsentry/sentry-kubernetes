@@ -137,11 +137,9 @@ func TestFindRootOwner(t *testing.T) {
 	if len(rootOwners) != 0 {
 		t.Errorf("Function did not return empty slice as expected")
 	}
-
 }
 
 func TestOwnerRefDFS(t *testing.T) {
-
 	// Create empty context
 	ctx := context.Background()
 	// Create simple fake client
@@ -216,5 +214,4 @@ func TestOwnerRefDFS(t *testing.T) {
 	if rootOwners[0].object.GetName() != replicasetObj.Name {
 		t.Errorf("The root owner's object is incorrect")
 	}
-
 }
