@@ -21,7 +21,6 @@ const (
 // by checking the job status to determine if the job just created pod (job starting)
 // or if the job exited
 func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerType EventHandlerType) error {
-
 	hub := sentry.GetHubFromContext(ctx)
 	if hub == nil {
 		return errors.New("cannot get hub from context")
@@ -45,7 +44,6 @@ func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerTy
 	}
 
 	hub.WithScope(func(scope *sentry.Scope) {
-
 		// If DSN annotation provided, we bind a new client with that DSN
 		client, ok := dsnClientMapping.GetClientFromObject(ctx, &job.ObjectMeta, hub.Client().Options())
 		if ok {
@@ -71,7 +69,6 @@ func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerTy
 
 // Sends the checkin event to sentry crons for when a job starts
 func checkinJobStarting(ctx context.Context, job *batchv1.Job, cronsMonitorData *CronsMonitorData) error {
-
 	logger := zerolog.Ctx(ctx)
 
 	hub := sentry.GetHubFromContext(ctx)
@@ -101,7 +98,6 @@ func checkinJobStarting(ctx context.Context, job *batchv1.Job, cronsMonitorData 
 
 // Sends the checkin event to sentry crons for when a job ends
 func checkinJobEnding(ctx context.Context, job *batchv1.Job, cronsMonitorData *CronsMonitorData) error {
-
 	hub := sentry.GetHubFromContext(ctx)
 	if hub == nil {
 		return errors.New("cannot get hub from context")

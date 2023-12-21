@@ -11,7 +11,6 @@ import (
 )
 
 func TestRunEnhancers(t *testing.T) {
-
 	// Create empty context
 	ctx := context.Background()
 	// Create simple fake client

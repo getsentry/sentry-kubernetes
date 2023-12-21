@@ -23,8 +23,8 @@ test: ## Run tests
 .PHONY: test
 
 # Coverage
-COVERAGE_MODE    	= atomic
-COVERAGE_PROFILE 	= coverage.out
+COVERAGE_MODE       = atomic
+COVERAGE_PROFILE    = coverage.out
 COVERAGE_REPORT_DIR = .coverage
 COVERAGE_REPORT_DIR_ABS  = $(MKFILE_DIR)/$(COVERAGE_REPORT_DIR)
 COVERAGE_REPORT_FILE_ABS = $(COVERAGE_REPORT_DIR_ABS)/$(COVERAGE_PROFILE)
@@ -55,3 +55,11 @@ fmt: ## Run "go fmt"
 	go fmt ./...; \
 		git diff --exit-code;
 .PHONY: fmt
+
+lint: ## Lint (using "golangci-lint")
+	golangci-lint run -v $(ARGS)
+.PHONY: lint
+
+lint-fix: ARGS=--fix
+lint-fix: lint ### Lint and apply fixes (when applicable)
+.PHONY: lint-fix

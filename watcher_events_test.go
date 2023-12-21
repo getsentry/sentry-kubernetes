@@ -16,7 +16,6 @@ import (
 // and checking it causes Sentry to capture the event
 // with the correct message and Sentry tags
 func TestHandleWatchEvent(t *testing.T) {
-
 	// Create empty context
 	ctx := context.Background()
 

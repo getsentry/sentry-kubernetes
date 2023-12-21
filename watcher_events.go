@@ -146,7 +146,6 @@ func handleWatchEvent(ctx context.Context, event *watch.Event, cutoffTime metav1
 	// To avoid concurrency issue
 	hub = hub.Clone()
 	hub.WithScope(func(scope *sentry.Scope) {
-
 		// Find the object meta that the event is about
 		object, ok := findObject(ctx, eventObject.InvolvedObject.Kind, eventObject.InvolvedObject.Namespace, eventObject.InvolvedObject.Name)
 		if ok {

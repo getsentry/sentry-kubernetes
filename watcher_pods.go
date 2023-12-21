@@ -109,7 +109,6 @@ func handlePodWatchEvent(ctx context.Context, event *watch.Event) {
 			continue
 		}
 		hub.WithScope(func(scope *sentry.Scope) {
-
 			// If DSN annotation provided, we bind a new client with that DSN
 			client, ok := dsnClientMapping.GetClientFromObject(ctx, &podObject.ObjectMeta, hub.Client().Options())
 			if ok {
@@ -202,8 +201,6 @@ func watchPodsInNamespaceForever(ctx context.Context, config *rest.Config, names
 
 func startPodWatchers(ctx context.Context, config *rest.Config, namespaces []string) {
 	for _, namespace := range namespaces {
-
 		go watchPodsInNamespaceForever(ctx, config, namespace)
-
 	}
 }
