@@ -28,6 +28,10 @@ Errors and warnings in Kubernetes often go unnoticed by operators. Even when the
 
 - `SENTRY_K8S_LOG_LEVEL` - logging level. Can be `trace`, `debug`, `info`, `warn`, `error`, `disabled`. Default is `info`.
 
+- `SENTRY_K8S_MONITOR_CRONJOBS` - enables Sentry Crons integration for `CronJob` objects
+
+- `SENTRY_K8S_CUSTOM_DSNS` - enables custom DSN to be specified in the `annotations` with key `k8s.sentry.io/dsn` which would take precedence over the environment variable.
+
 ### Adding custom tags
 
 To add a custom tag to all events produced by the agent, set an environment variable, whose name is prefixed with `SENTRY_K8S_GLOBAL_TAG_`.
@@ -54,16 +58,92 @@ If you don't want to report certain kinds of events to Sentry, you can configure
 
   `SENTRY_K8S_FILTER_OUT_EVENT_SOURCES` is a comma separated set of Source Component values (examples include `kubelet`, `default-cheduler`, `job-controller`, `kernel-monitor`). If the event's Source Component is in that list, the event will be dropped. By default, no events are filtered out by Source Component.
 
-## Caveats
+### Custom DSN Support
 
-- When the same event (for example, a failed readiness check) happens multiple times, Kubernetes might not report each of them individually, and instead combine them, and send with some backoff. The event message in that case will be prefixed with "(combined from similar events)" string, that we currently strip. AFAIK, there's no way to disable this batching behaviour.
+By default, the Sentry project that the agent sends events to is specified by the environment variable `SENTRY_DSN`. However, if the flag `SENTRY_K8S_CUSTOM_DSNS` is enabled, a Kubernetes object manifest may specify a custom `DSN` that takes precedence over the global `DSN`. To do so, specified the custom `DSN` in the `annotations` using the `k8s.sentry.io/dsn` key as follows:
 
-### Potential Improvements
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cronjob-basic-success
+  labels:
+    type: test-pod
+  annotations:
+    k8s.sentry.io/dsn: "<Insert DSN here>"
+spec:
+  schedule: "* * * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            type: test-pod
+            run: cronjob-basic-success
+        spec:
+          containers:
+            - name: hello
+              image: busybox:1.28
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - date; echo Hello!; sleep 3
+          restartPolicy: OnFailure
+```
 
-- For pod-related events: fetch last log lines and displaying them as breadcrumbs or stacktrace.
-- Automatic Sentry cron monitoring instrumentaion of Kubernetes CronJobs.
+### Integration with Sentry Crons
 
-# Local Development (out of cluster configuration)
+A useful feature offered by Sentry is [Crons Monitoring](https://docs.sentry.io/product/crons/). This feature may be enabled by setting the environment variable `SENTRY_K8S_MONITOR_CRONJOBS` variable to true. The agent is compatible with Sentry Crons and can automatically [upsert](https://develop.sentry.dev/sdk/check-ins/#monitor-upsert-support) `CronJob` objects with a Sentry project.
+
+The agent automatically creates a Crons monitor for any detected `CronJob` with the monitor slug name to be the name of the `CronJob`. Additionally, the schedule is automatically taken from the `CronJob` manifest.
+
+Moreover, any the events of any resource object (e.g. `pod`, `job`, `event`) that is associated with a `CronJob` will have the corresponding monitor slug name is a metadata. This allows the grouping of events based on Crons monitors in Issues as well.
+
+**Crons Example**
+
+The following manifest is of a cronjob that sometimes fails and completes with variable durations:
+
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cronjob-late-maybe-error
+  labels:
+    type: test-pod
+spec:
+  schedule: "* * * * *"
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        metadata:
+          labels:
+            type: test-pod
+            run: cronjob-late-maybe-error
+        spec:
+          containers:
+            - name: hello
+              image: busybox:1.28
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  MINWAIT=0
+                  MAXWAIT=60
+                  sleep $((MINWAIT+RANDOM % (MAXWAIT-MINWAIT)))
+                  sleep 3
+                  r=$((RANDOM%2))
+                  if [ $r -eq 0 ]; then echo Hello!; else exit 1; fi
+          restartPolicy: Never
+  ```
+
+In the Sentry Crons tab of the corresponding project, we may see the following:
+
+  ![ExampleCronsMonitor](./images/example_crons_monitor.png)
+
+## Local Development (out of cluster configuration)
 
 1. Install necessary dependencies to run Kubernetes locally
     1. Install `docker` and start the docker daemon
@@ -148,4 +228,12 @@ If you don't want to report certain kinds of events to Sentry, you can configure
     ```
     d. Check the `Issues` tab of the corresponding Sentry project to ensure the events captured are shown similar to below:
 
-    ![ExampleEvent](./exampleEvent.png)
+    ![ExampleEvent](./images/example_event.png)
+
+## Caveats
+
+- When the same event (for example, a failed readiness check) happens multiple times, Kubernetes might not report each of them individually, and instead combine them, and send with some backoff. The event message in that case will be prefixed with "(combined from similar events)" string, that we currently strip. AFAIK, there's no way to disable this batching behaviour.
+
+## Potential Improvements
+
+- For pod-related events: fetch last log lines and displaying them as breadcrumbs or stacktrace.
