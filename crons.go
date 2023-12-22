@@ -55,11 +55,17 @@ func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerTy
 		// The job just begun so check in to start
 		if job.Status.Active == 0 && job.Status.Succeeded == 0 && job.Status.Failed == 0 {
 			// Add the job to the cronJob informer data
-			checkinJobStarting(ctx, job, cronsMonitorData)
+			err := checkinJobStarting(ctx, job, cronsMonitorData)
+			if err != nil {
+				return
+			}
 		} else if job.Status.Active > 0 {
 			return
 		} else if job.Status.Failed > 0 || job.Status.Succeeded > 0 {
-			checkinJobEnding(ctx, job, cronsMonitorData)
+			err := checkinJobEnding(ctx, job, cronsMonitorData)
+			if err != nil {
+				return
+			}
 			return // Finished
 		}
 	})
@@ -84,14 +90,17 @@ func checkinJobStarting(ctx context.Context, job *batchv1.Job, cronsMonitorData 
 	logger.Debug().Msgf("Checking in at start of job: %s\n", job.Name)
 
 	// All containers running in the pod
-	checkinId := hub.CaptureCheckIn(
+	checkinID := hub.CaptureCheckIn(
 		&sentry.CheckIn{
 			MonitorSlug: cronsMonitorData.MonitorSlug,
 			Status:      sentry.CheckInStatusInProgress,
 		},
 		cronsMonitorData.monitorConfig,
 	)
-	cronsMonitorData.addJob(job, *checkinId)
+	err := cronsMonitorData.addJob(job, *checkinID)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -129,7 +138,7 @@ func checkinJobEnding(ctx context.Context, job *batchv1.Job, cronsMonitorData *C
 	logger.Trace().Msgf("checking in at end of job: %s\n", job.Name)
 	hub.CaptureCheckIn(
 		&sentry.CheckIn{
-			ID:          jobData.getCheckinId(),
+			ID:          jobData.getCheckinID(),
 			MonitorSlug: cronsMonitorData.MonitorSlug,
 			Status:      jobStatus,
 		},

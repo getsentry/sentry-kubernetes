@@ -91,9 +91,8 @@ func (d *DsnClientMapping) GetClientFromObject(ctx context.Context, object metav
 			}
 		}
 		return client, true
-	} else {
-		return nil, false
 	}
+	return nil, false
 }
 
 // Recursive function to find if there is a DSN annotation

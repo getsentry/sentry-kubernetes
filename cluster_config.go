@@ -50,12 +50,12 @@ func getClusterConfig() (*rest.Config, error) {
 		if err == nil {
 			log.Info().Msg("Detected in-cluster configuration")
 			return config, nil
+		}
+
+		if autoConfig {
+			log.Warn().Msgf("Could not initialize in-cluster config")
 		} else {
-			if autoConfig {
-				log.Warn().Msgf("Could not initialize in-cluster config")
-			} else {
-				return nil, err
-			}
+			return nil, err
 		}
 	}
 
@@ -76,13 +76,11 @@ func getClusterConfig() (*rest.Config, error) {
 
 		log.Debug().Msgf("Kubeconfig path: %s", kubeconfig)
 		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
-
 		if err == nil {
 			log.Info().Msg("Detected out-of-cluster configuration")
 			return config, nil
-		} else {
-			return nil, err
 		}
+		return nil, err
 	}
 
 	if config == nil {

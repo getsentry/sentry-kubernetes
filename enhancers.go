@@ -31,7 +31,7 @@ func runEnhancers(ctx context.Context, eventObject *v1.Event, kind string, objec
 
 	// If an event object is provided, we call the event enhancer
 	if eventObject != nil {
-		err = eventEnhancer(ctx, scope, eventObject, sentryEvent)
+		err = eventEnhancer(scope, eventObject)
 		if err != nil {
 			return err
 		}
@@ -56,7 +56,7 @@ type KindObjectPair struct {
 	object metav1.Object
 }
 
-func eventEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
+func eventEnhancer(scope *sentry.Scope, object metav1.Object) error {
 	eventObj, ok := object.(*v1.Event)
 	if !ok {
 		return errors.New("failed to cast object to event object")
@@ -90,7 +90,7 @@ func objectEnhancer(ctx context.Context, scope *sentry.Scope, kindObjectPair *Ki
 	objectTag := fmt.Sprintf("%s/%s", kindObjectPair.kind, kindObjectPair.object.GetName())
 	ctx, logger := getLoggerWithTag(ctx, "object", objectTag)
 
-	var err error = nil
+	var err error
 
 	logger.Trace().Msgf("Current fingerprint: %v", sentryEvent.Fingerprint)
 
@@ -174,10 +174,10 @@ func podEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object,
 	// Add the pod to the tag
 	setTagIfNotEmpty(scope, "pod_name", object.GetName())
 	podObj.ManagedFields = []metav1.ManagedFieldsEntry{}
-	metadataJson, err := prettyJson(podObj.ObjectMeta)
+	metadataJSON, err := prettyJSON(podObj.ObjectMeta)
 	if err == nil {
 		scope.SetContext(KindPod, sentry.Context{
-			"Metadata": metadataJson,
+			"Metadata": metadataJSON,
 		})
 	}
 
@@ -205,10 +205,10 @@ func jobEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object,
 	// Add the job to the tag
 	setTagIfNotEmpty(scope, "job_name", object.GetName())
 	jobObj.ManagedFields = []metav1.ManagedFieldsEntry{}
-	metadataJson, err := prettyJson(jobObj.ObjectMeta)
+	metadataJSON, err := prettyJSON(jobObj.ObjectMeta)
 	if err == nil {
 		scope.SetContext(KindJob, sentry.Context{
-			"Metadata": metadataJson,
+			"Metadata": metadataJSON,
 		})
 	}
 
@@ -239,10 +239,10 @@ func cronjobEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Obj
 	// Add the cronjob to the tag
 	setTagIfNotEmpty(scope, "cronjob_name", object.GetName())
 	cronjobObj.ManagedFields = []metav1.ManagedFieldsEntry{}
-	metadataJson, err := prettyJson(cronjobObj.ObjectMeta)
+	metadataJSON, err := prettyJSON(cronjobObj.ObjectMeta)
 	if err == nil {
 		scope.SetContext(KindCronjob, sentry.Context{
-			"Metadata": metadataJson,
+			"Metadata": metadataJSON,
 		})
 	}
 
@@ -268,10 +268,10 @@ func replicaSetEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.
 	// Add the replicaset to the tag
 	setTagIfNotEmpty(scope, "replicaset_name", object.GetName())
 	replicasetObj.ManagedFields = []metav1.ManagedFieldsEntry{}
-	metadataJson, err := prettyJson(replicasetObj.ObjectMeta)
+	metadataJSON, err := prettyJSON(replicasetObj.ObjectMeta)
 	if err == nil {
 		scope.SetContext(KindReplicaset, sentry.Context{
-			"Metadata": metadataJson,
+			"Metadata": metadataJSON,
 		})
 	}
 
@@ -296,10 +296,10 @@ func deploymentEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.
 	// Add the deployment to the tag
 	setTagIfNotEmpty(scope, "deployment_name", object.GetName())
 	deploymentObj.ManagedFields = []metav1.ManagedFieldsEntry{}
-	metadataJson, err := prettyJson(deploymentObj.ObjectMeta)
+	metadataJSON, err := prettyJSON(deploymentObj.ObjectMeta)
 	if err == nil {
 		scope.SetContext(KindDeployment, sentry.Context{
-			"Metadata": metadataJson,
+			"Metadata": metadataJSON,
 		})
 	}
 

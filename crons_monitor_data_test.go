@@ -9,27 +9,27 @@ import (
 )
 
 func TestNewCronsJobData(t *testing.T) {
-	fakeId := "080181f33ca343f89b0bf55d50abfeee"
+	fakeID := "080181f33ca343f89b0bf55d50abfeee"
 
-	cronsJobData := NewCronsJobData(sentry.EventID(fakeId))
+	cronsJobData := NewCronsJobData(sentry.EventID(fakeID))
 	if cronsJobData == nil {
 		t.Errorf("Failed to create cronsJobData")
 		return
 	}
-	if cronsJobData.CheckinId != sentry.EventID(fakeId) {
+	if cronsJobData.CheckinID != sentry.EventID(fakeID) {
 		t.Errorf("The cronsJobData set to incorrect ID")
 	}
 }
 
 func TestGetCheckinId(t *testing.T) {
-	fakeId := "080181f33ca343f89b0bf55d50abfeee"
+	fakeID := "080181f33ca343f89b0bf55d50abfeee"
 
-	cronsJobData := NewCronsJobData(sentry.EventID(fakeId))
+	cronsJobData := NewCronsJobData(sentry.EventID(fakeID))
 	if cronsJobData == nil {
 		t.Errorf("Failed to create cronsJobData")
 		return
 	}
-	if cronsJobData.getCheckinId() != sentry.EventID(fakeId) {
+	if cronsJobData.getCheckinID() != sentry.EventID(fakeID) {
 		t.Errorf("Retrieved incorrect checkin ID")
 	}
 }
@@ -56,7 +56,7 @@ func TestNewCronsMonitorData(t *testing.T) {
 }
 
 func TestAddJob(t *testing.T) {
-	fakeId := "080181f33ca343f89b0bf55d50abfeee"
+	fakeID := "080181f33ca343f89b0bf55d50abfeee"
 	fakeMonitorSlug := "cronjob-slug"
 	fakeSchedule := "* * * * *"
 	var fakeCompletions int32 = 3
@@ -68,13 +68,16 @@ func TestAddJob(t *testing.T) {
 			Name: "TestAddJobJob",
 		},
 	}
-	cronsMonitorData.addJob(jobObj, sentry.EventID(fakeId))
+	err := cronsMonitorData.addJob(jobObj, sentry.EventID(fakeID))
+	if err != nil {
+		t.Errorf("Failed to add job")
+	}
 
 	jobData, ok := cronsMonitorData.JobDatas["TestAddJobJob"]
 	if !ok {
 		t.Errorf("Failed to add job data")
 	}
-	if jobData.CheckinId != sentry.EventID(fakeId) {
+	if jobData.CheckinID != sentry.EventID(fakeID) {
 		t.Errorf("Incorrect checkin ID")
 	}
 }
@@ -92,14 +95,14 @@ func TestAddCronsMonitorData(t *testing.T) {
 		t.Errorf("Failed to create cronsMonitorDataMap")
 	}
 
-	fakeMonitorSlug := "TestAddCronsMonitorDataCronJob"
+	cronjobName := "TestAddCronsMonitorDataCronJob"
 	fakeSchedule := "* * * * *"
 	var fakeCompletions int32 = 3
-	cronsMonitorData := NewCronsMonitorData(fakeMonitorSlug, fakeSchedule, &fakeCompletions)
+	cronsMonitorData := NewCronsMonitorData(cronjobName, fakeSchedule, &fakeCompletions)
 
-	cronsMetaData.addCronsMonitorData("TestAddCronsMonitorDataCronJob", cronsMonitorData)
+	cronsMetaData.addCronsMonitorData(cronjobName, cronsMonitorData)
 
-	retCronsMonitorData, ok := cronsMetaData.cronsMonitorDataMap["TestAddCronsMonitorDataCronJob"]
+	retCronsMonitorData, ok := cronsMetaData.cronsMonitorDataMap[cronjobName]
 	if !ok {
 		t.Errorf("Failed to add cronsMonitorData to map")
 	}

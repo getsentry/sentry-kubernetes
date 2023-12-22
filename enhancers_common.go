@@ -62,7 +62,7 @@ func checkCommonEnhancerPatterns() {
 	}
 }
 
-func matchSinglePattern(ctx context.Context, message string, pattern *commonMsgPattern) (fingerprint []string, matched bool) {
+func matchSinglePattern(message string, pattern *commonMsgPattern) (fingerprint []string, matched bool) {
 	pat := pattern.regex
 
 	match := pat.FindStringSubmatch(message)
@@ -89,14 +89,14 @@ func matchSinglePattern(ctx context.Context, message string, pattern *commonMsgP
 	return fingerprint, true
 }
 
-func matchCommonPatterns(ctx context.Context, scope *sentry.Scope, sentryEvent *sentry.Event) error {
+func matchCommonPatterns(ctx context.Context, sentryEvent *sentry.Event) error {
 	logger := zerolog.Ctx(ctx)
 	message := sentryEvent.Message
 
 	logger.Trace().Msgf("Matching against message: %q", message)
 
 	for _, pattern := range patternsAll {
-		fingerprint, matched := matchSinglePattern(ctx, message, pattern)
+		fingerprint, matched := matchSinglePattern(message, pattern)
 		if matched {
 			logger.Trace().Msgf("Pattern match: %v, fingerprint: %v", pattern, fingerprint)
 			// Ideally we should set the fingerprint on Scope, but there's no easy way right now to get
@@ -122,6 +122,9 @@ func runCommonEnhancer(ctx context.Context, scope *sentry.Scope, sentryEvent *se
 	}
 
 	// Match common message patterns
-	matchCommonPatterns(ctx, scope, sentryEvent)
+	err := matchCommonPatterns(ctx, sentryEvent)
+	if err != nil {
+		return err
+	}
 	return nil
 }

@@ -9,18 +9,18 @@ import (
 
 // Struct associated with a job
 type CronsJobData struct {
-	CheckinId sentry.EventID
+	CheckinID sentry.EventID
 }
 
 // Constructor for cronsMonitorData
 func NewCronsJobData(checkinId sentry.EventID) *CronsJobData {
 	return &CronsJobData{
-		CheckinId: checkinId,
+		CheckinID: checkinId,
 	}
 }
 
-func (j *CronsJobData) getCheckinId() sentry.EventID {
-	return j.CheckinId
+func (j *CronsJobData) getCheckinID() sentry.EventID {
+	return j.CheckinID
 }
 
 // Struct associated with a cronJob
@@ -55,10 +55,10 @@ func NewCronsMonitorData(monitorSlug string, schedule string, completions *int32
 }
 
 // Add a job to the crons monitor
-func (c *CronsMonitorData) addJob(job *batchv1.Job, checkinId sentry.EventID) error {
+func (c *CronsMonitorData) addJob(job *batchv1.Job, checkinID sentry.EventID) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	c.JobDatas[job.Name] = NewCronsJobData(checkinId)
+	c.JobDatas[job.Name] = NewCronsJobData(checkinID)
 	return nil
 }
 

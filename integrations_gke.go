@@ -15,7 +15,7 @@ type IntegrationGKE struct {
 	clusterLocation string
 	clusterName     string
 	projectName     string
-	clusterUrl      string
+	clusterURL      string
 
 	_initialized bool
 }
@@ -26,8 +26,8 @@ func GetIntegrationGKE() *IntegrationGKE {
 
 var instanceIntegrationGKE = IntegrationGKE{_initialized: false}
 
-const instanceMetadataUrl = "http://metadata.google.internal/computeMetadata/v1/instance/attributes/?recursive=true"
-const projectMetadataUrl = "http://metadata.google.internal/computeMetadata/v1/project/?recursive=true"
+const instanceMetadataURL = "http://metadata.google.internal/computeMetadata/v1/instance/attributes/?recursive=true"
+const projectMetadataURL = "http://metadata.google.internal/computeMetadata/v1/project/?recursive=true"
 
 type InstanceMetadata struct {
 	// Allow both types of casing for compatibility
@@ -38,10 +38,10 @@ type InstanceMetadata struct {
 }
 
 type ProjectMetadata struct {
-	ProjectId1        string `json:"project-id"`
-	ProjectId2        string `json:"projectId"`
-	NumericProjectId1 int    `json:"numeric-project-id"`
-	NumericProjectId2 int    `json:"numericProjectId"`
+	ProjectID1        string `json:"project-id"`
+	ProjectID2        string `json:"projectId"`
+	NumericProjectID1 int    `json:"numeric-project-id"`
+	NumericProjectID2 int    `json:"numericProjectId"`
 }
 
 func getGkeLogger() *zerolog.Logger {
@@ -63,29 +63,29 @@ func (im *InstanceMetadata) ClusterLocation() string {
 	return im.ClusterLocation2
 }
 
-func (pm *ProjectMetadata) ProjectId() string {
-	if pm.ProjectId1 != "" {
-		return pm.ProjectId1
+func (pm *ProjectMetadata) ProjectID() string {
+	if pm.ProjectID1 != "" {
+		return pm.ProjectID1
 	}
-	return pm.ProjectId2
+	return pm.ProjectID2
 }
 
-func (pm *ProjectMetadata) NumericProjectId() int {
-	if pm.NumericProjectId1 != 0 {
-		return pm.NumericProjectId1
+func (pm *ProjectMetadata) NumericProjectID() int {
+	if pm.NumericProjectID1 != 0 {
+		return pm.NumericProjectID1
 	}
-	return pm.NumericProjectId2
+	return pm.NumericProjectID2
 }
 
-func getClusterUrl(clusterLocation string, clusterName string, projectId string) string {
-	if clusterLocation == "" || clusterName == "" || projectId == "" {
+func getClusterURL(clusterLocation string, clusterName string, projectID string) string {
+	if clusterLocation == "" || clusterName == "" || projectID == "" {
 		return ""
 	}
 	return fmt.Sprintf(
 		"https://console.cloud.google.com/kubernetes/clusters/details/%s/%s/details?project=%s",
 		clusterLocation,
 		clusterName,
-		projectId,
+		projectID,
 	)
 }
 
@@ -123,7 +123,7 @@ func (igke *IntegrationGKE) Init() error {
 
 	// Instance metadata
 	var instanceMeta InstanceMetadata
-	err := readGoogleMetadata(instanceMetadataUrl, &instanceMeta)
+	err := readGoogleMetadata(instanceMetadataURL, &instanceMeta)
 	if err != nil {
 		return fmt.Errorf("error initializing GKE integration: %v", err)
 	}
@@ -132,13 +132,13 @@ func (igke *IntegrationGKE) Init() error {
 
 	// Project metadata
 	var projectMeta ProjectMetadata
-	err = readGoogleMetadata(projectMetadataUrl, &projectMeta)
+	err = readGoogleMetadata(projectMetadataURL, &projectMeta)
 	if err != nil {
 		return fmt.Errorf("error initializing GKE integration: %v", err)
 	}
-	igke.projectName = projectMeta.ProjectId()
+	igke.projectName = projectMeta.ProjectID()
 
-	igke.clusterUrl = getClusterUrl(
+	igke.clusterURL = getClusterURL(
 		igke.clusterLocation, igke.clusterName, igke.projectName,
 	)
 
@@ -156,8 +156,8 @@ func (igke *IntegrationGKE) GetContext() (string, sentry.Context, error) {
 		"Cluster location": igke.clusterLocation,
 		"GCP project":      igke.projectName,
 	}
-	if igke.clusterUrl != "" {
-		gkeContext["Cluster URL"] = igke.clusterUrl
+	if igke.clusterURL != "" {
+		gkeContext["Cluster URL"] = igke.clusterURL
 	}
 	return "Google Kubernetes Engine", gkeContext, nil
 }

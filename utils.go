@@ -9,7 +9,7 @@ import (
 	globalLogger "github.com/rs/zerolog/log"
 )
 
-var truthyStrings map[string]struct{} = map[string]struct{}{
+var truthyStrings = map[string]struct{}{
 	"yes":  {},
 	"true": {},
 	"1":    {},
@@ -21,7 +21,7 @@ func isTruthy(s string) bool {
 	return found
 }
 
-func prettyJson(obj any) (string, error) {
+func prettyJSON(obj any) (string, error) {
 	bytes, err := json.MarshalIndent(obj, "", "  ")
 	if err != nil {
 		return "", err

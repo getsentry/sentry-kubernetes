@@ -15,7 +15,7 @@ const bufferSize = 1000
 var mu sync.RWMutex
 
 // TODO: we could have one buffer per namespace
-var eventBuffer *ring.Ring = ring.New(bufferSize)
+var eventBuffer = ring.New(bufferSize)
 
 func addEventToBuffer(event *v1.Event) {
 	mu.Lock()
