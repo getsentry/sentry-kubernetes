@@ -30,7 +30,7 @@ Errors and warnings in Kubernetes often go unnoticed by operators. Even when the
 
 - `SENTRY_K8S_MONITOR_CRONJOBS` - enables Sentry Crons integration for `CronJob` objects
 
-- `SENTRY_K8S_CUSTOM_DSNS` - enables custom DSN to be specified in the `annotations` with key `k8s.sentry.io/dsn` which would take precedence over the environment variable.
+- `SENTRY_K8S_CUSTOM_DSNS` - if set to `1`, enables custom DSN to be specified in the `annotations` with key `k8s.sentry.io/dsn` which would take precedence over `SENTRY_DSN. Disabled by default.
 
 ### Adding custom tags
 
