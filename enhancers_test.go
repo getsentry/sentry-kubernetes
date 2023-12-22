@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/getsentry/sentry-go"
@@ -16,11 +18,38 @@ func TestRunEnhancers(t *testing.T) {
 	ctx := context.Background()
 	// Create simple fake client
 	fakeClientset := fake.NewSimpleClientset()
+
+	var replicas int32 = 3
+	replicasetObj := &v1.ReplicaSet{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "ReplicaSet",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "TestRunPodEnhancerReplicaset",
+			Namespace: "TestRunPodEnhancerNamespace",
+			UID:       "218fc5a9-a5f1-4b54-aa05-46717d0ab26d",
+		},
+		Spec: v1.ReplicaSetSpec{
+			Replicas: &replicas,
+		},
+		Status: v1.ReplicaSetStatus{
+			Replicas: replicas,
+		},
+	}
+
 	// Create pod object with an error status
 	podObj := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "TestRunPodEnhancerPod",
 			Namespace: "TestRunPodEnhancerNamespace",
+			UID:       "123g4e1p-a591-5b50-aa28-12345d0ab26f",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Kind: "ReplicaSet",
+					Name: "TestRunPodEnhancerReplicaset",
+					UID:  "218fc5a9-a5f1-4b54-aa05-46717d0ab26d",
+				},
+			},
 		},
 		Spec: corev1.PodSpec{
 			NodeName: "TestRunPodEnhancerNode",
@@ -40,7 +69,11 @@ func TestRunEnhancers(t *testing.T) {
 			},
 		},
 	}
-	_, err := fakeClientset.CoreV1().Pods("TestRunPodEnhancerNamespace").Create(context.TODO(), podObj, metav1.CreateOptions{})
+	_, err := fakeClientset.AppsV1().ReplicaSets("TestRunPodEnhancerNamespace").Create(context.TODO(), replicasetObj, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Error injecting replicaset add: %v", err)
+	}
+	_, err = fakeClientset.CoreV1().Pods("TestRunPodEnhancerNamespace").Create(context.TODO(), podObj, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("error injecting pod add: %v", err)
 	}
@@ -65,7 +98,8 @@ func TestRunEnhancers(t *testing.T) {
 	expectedTags := map[string]string{
 		"node_name": "TestRunPodEnhancerNode",
 	}
-	// the test fails if any tag key, value pair does not match
+
+	// The test fails if any tag key, value pair does not match
 	for key, val := range expectedTags {
 		if event.Tags[key] != expectedTags[key] {
 			t.Errorf("For Sentry tag with key [%s], received \"%s\", wanted \"%s\"", key, event.Tags[key], val)
@@ -73,21 +107,17 @@ func TestRunEnhancers(t *testing.T) {
 	}
 	expectedFingerprints := []string{
 		"This event is for TestRunPodEnhancer",
-		"TestRunPodEnhancerPod",
+		"ReplicaSet",
+		"TestRunPodEnhancerReplicaset",
 	}
 
-	// The test fails if any tag key, value pair does not match
-	var found bool
-	for _, expectedFingerprint := range expectedFingerprints {
-		found = false
-		for _, fingerprint := range event.Fingerprint {
-			if expectedFingerprint == fingerprint {
-				found = true
-			}
-		}
-		if !found {
-			t.Errorf("The fingerprint slice does not contain the expected fingerprint: %s", expectedFingerprint)
-		}
+	// This helps ensure that the enhancer has all the necessary fingerprint
+	// strings (it is important that only replicaset's kind and name is included
+	// and not the pod's so all events from the replicaset are grouped together)
+	sort.Strings(expectedFingerprints)
+	sort.Strings(event.Fingerprint)
+	if !reflect.DeepEqual(expectedFingerprints, event.Fingerprint) {
+		t.Errorf("The fingerprint is incorrect")
 	}
 
 	// Check message is changed to include pod name
