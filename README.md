@@ -28,7 +28,7 @@ Errors and warnings in Kubernetes often go unnoticed by operators. Even when the
 
 - `SENTRY_K8S_LOG_LEVEL` - logging level. Can be `trace`, `debug`, `info`, `warn`, `error`, `disabled`. Default is `info`.
 
-- `SENTRY_K8S_MONITOR_CRONJOBS` - enables Sentry Crons integration for `CronJob` objects
+- `SENTRY_K8S_MONITOR_CRONJOBS` - if set to `1`, enables Sentry Crons integration for `CronJob` objects. Disabled by default.
 
 - `SENTRY_K8S_CUSTOM_DSNS` - if set to `1`, enables custom DSN to be specified in the `annotations` with key `k8s.sentry.io/dsn` which would take precedence over `SENTRY_DSN. Disabled by default.
 
