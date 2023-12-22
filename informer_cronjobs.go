@@ -11,7 +11,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-func createCronjobInformer(ctx context.Context, factory informers.SharedInformerFactory, namespace string) (cache.SharedIndexInformer, error) {
+func createCronjobInformer(ctx context.Context, factory informers.SharedInformerFactory) (cache.SharedIndexInformer, error) {
 	logger := zerolog.Ctx(ctx)
 
 	logger.Debug().Msgf("Starting cronjob informer\n")

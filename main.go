@@ -49,7 +49,10 @@ func main() {
 
 	setKubernetesSentryContext(config)
 	setGlobalSentryTags()
-	runIntegrations()
+	err = runIntegrations()
+	if err != nil {
+		globalLogger.Fatal().Msgf("Integration error: %s", err)
+	}
 
 	watchAllNamespaces, namespaces, err := getNamespacesToWatch()
 	if err != nil {

@@ -39,7 +39,10 @@ func TestAddClientToMap(t *testing.T) {
 	clientMapping := NewDsnClientMapping()
 
 	// Add the dsn for the first time
-	clientMapping.AddClientToMap(clientOptions)
+	_, err := clientMapping.AddClientToMap(clientOptions)
+	if err != nil {
+		t.Errorf("Failed to add client to map")
+	}
 	firstClient, ok := clientMapping.clientMap[fakeDsn]
 	if !ok {
 		t.Errorf("Failed to add the fake dsn to the client map")
@@ -49,7 +52,10 @@ func TestAddClientToMap(t *testing.T) {
 	}
 
 	// Try to add the same dsn again, which should create a new client
-	clientMapping.AddClientToMap(clientOptions)
+	_, err = clientMapping.AddClientToMap(clientOptions)
+	if err != nil {
+		t.Errorf("Failed to add client to map")
+	}
 	secondClient, ok := clientMapping.clientMap[fakeDsn]
 	if !ok {
 		t.Errorf("Failed to add client if dsn already exists in the map")
@@ -67,8 +73,10 @@ func TestGetClientFromMap(t *testing.T) {
 	clientMapping := NewDsnClientMapping()
 
 	// Add the DSN and its corresponding client
-	clientMapping.AddClientToMap(clientOptions)
-
+	_, err := clientMapping.AddClientToMap(clientOptions)
+	if err != nil {
+		t.Errorf("Failed to add client to map")
+	}
 	// Test function to retrieve the client with DSN
 	client, ok := clientMapping.GetClientFromMap(fakeDsn)
 	if !ok {

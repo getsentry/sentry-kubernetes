@@ -41,9 +41,9 @@ func handlePodTerminationEvent(ctx context.Context, containerStatus *v1.Containe
 	// FIXME: there's no proper controller we can extract here, so inventing a new one
 	setTagIfNotEmpty(scope, "event_source_component", "x-pod-controller")
 
-	if containerStatusJson, err := prettyJson(containerStatus); err == nil {
+	if containerStatusJSON, err := prettyJSON(containerStatus); err == nil {
 		scope.SetContext("Container", sentry.Context{
-			"Status": containerStatusJson,
+			"Status": containerStatusJSON,
 		})
 	}
 
@@ -61,8 +61,13 @@ func handlePodTerminationEvent(ctx context.Context, containerStatus *v1.Containe
 }
 
 func buildSentryEventFromPodTerminationEvent(ctx context.Context, pod *v1.Pod, message string, scope *sentry.Scope) *sentry.Event {
+	logger := zerolog.Ctx(ctx)
+
 	sentryEvent := &sentry.Event{Message: message, Level: sentry.LevelError}
-	runEnhancers(ctx, nil, KindPod, pod, scope, sentryEvent)
+	err := runEnhancers(ctx, nil, KindPod, pod, scope, sentryEvent)
+	if err != nil {
+		logger.Err(err)
+	}
 	return sentryEvent
 }
 
@@ -102,7 +107,7 @@ func handlePodWatchEvent(ctx context.Context, event *watch.Event) {
 
 	containerStatuses := podObject.Status.ContainerStatuses
 	logger.Trace().Msgf("Container statuses: %#v\n", containerStatuses)
-	for _, status := range containerStatuses {
+	for i, status := range containerStatuses {
 		state := status.State
 		if state.Terminated == nil {
 			// Ignore non-Terminated statuses
@@ -118,7 +123,7 @@ func handlePodWatchEvent(ctx context.Context, event *watch.Event) {
 			// Pass down clone context
 			ctx = sentry.SetHubOnContext(ctx, hub)
 			setWatcherTag(scope, podsWatcherName)
-			sentryEvent := handlePodTerminationEvent(ctx, &status, podObject, scope)
+			sentryEvent := handlePodTerminationEvent(ctx, &containerStatuses[i], podObject, scope)
 			if sentryEvent != nil {
 				hub.CaptureEvent(sentryEvent)
 			}

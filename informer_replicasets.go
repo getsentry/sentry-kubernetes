@@ -9,7 +9,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-func createReplicasetInformer(ctx context.Context, factory informers.SharedInformerFactory, namespace string) (cache.SharedIndexInformer, error) {
+func createReplicasetInformer(ctx context.Context, factory informers.SharedInformerFactory) (cache.SharedIndexInformer, error) {
 	logger := zerolog.Ctx(ctx)
 
 	logger.Debug().Msgf("starting replicaset informer\n")

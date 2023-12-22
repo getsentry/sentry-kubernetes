@@ -8,7 +8,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-func createDeploymentInformer(ctx context.Context, factory informers.SharedInformerFactory, namespace string) (cache.SharedIndexInformer, error) {
+func createDeploymentInformer(ctx context.Context, factory informers.SharedInformerFactory) (cache.SharedIndexInformer, error) {
 	logger := zerolog.Ctx(ctx)
 
 	logger.Debug().Msgf("starting deployment informer\n")
