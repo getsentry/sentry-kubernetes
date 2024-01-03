@@ -38,6 +38,7 @@ func handlePodTerminationEvent(ctx context.Context, containerStatus *v1.Containe
 	setTagIfNotEmpty(scope, "namespace", pod.Namespace)
 	setTagIfNotEmpty(scope, "pod_name", pod.Name)
 	setTagIfNotEmpty(scope, "container_name", containerStatus.Name)
+	setTagIfNotEmpty(scope, "area", pod.Labels["app.kubernetes.io/area"])
 
 	// FIXME: there's no proper controller we can extract here, so inventing a new one
 	setTagIfNotEmpty(scope, "event_source_component", "x-pod-controller")

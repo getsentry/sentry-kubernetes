@@ -40,6 +40,10 @@ func runPodEnhancer(ctx context.Context, podMeta *v1.ObjectReference, cachedObje
 		pod = cachedPod
 	}
 
+	if value, exists := pod.Labels["app.kubernetes.io/name"]; exists {
+		podName = value
+	}
+
 	// Clean-up the object
 	pod.ManagedFields = []metav1.ManagedFieldsEntry{}
 

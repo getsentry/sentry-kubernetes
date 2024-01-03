@@ -32,6 +32,7 @@ func initSentrySDK() {
 		BeforeSend:    beforeSend,
 		// Clear integration list
 		Integrations: func([]sentry.Integration) []sentry.Integration { return []sentry.Integration{} },
+		SampleRate:   0.01,
 	})
 	if err != nil {
 		globalLogger.Fatal().Msgf("sentry.Init: %s", err)
