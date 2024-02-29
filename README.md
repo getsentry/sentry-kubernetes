@@ -2,6 +2,8 @@
 
 Kubernetes event reporter for Sentry.
 
+> This fork also attempts to add ARM support.
+
 ---
 
 **⚠️ Note: this is BETA software that is still in development and may contain bugs. Use it at your own risk in production environments.**
@@ -137,98 +139,103 @@ spec:
                   r=$((RANDOM%2))
                   if [ $r -eq 0 ]; then echo Hello!; else exit 1; fi
           restartPolicy: Never
-  ```
+```
 
 In the Sentry Crons tab of the corresponding project, we may see the following:
 
-  ![ExampleCronsMonitor](./images/example_crons_monitor.png)
+![ExampleCronsMonitor](./images/example_crons_monitor.png)
 
 ## Local Development (out of cluster configuration)
 
 1. Install necessary dependencies to run Kubernetes locally
-    1. Install `docker` and start the docker daemon
 
-        [https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
+   1. Install `docker` and start the docker daemon
 
-        `docker` is a service that manages containers and is used by Kubernetes to create nodes (since `kind` actually create Kubernetes “nodes” as docker containers rather than VMs)
+      [https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
 
-    2. Install `kind` and add it to PATH
+      `docker` is a service that manages containers and is used by Kubernetes to create nodes (since `kind` actually create Kubernetes “nodes” as docker containers rather than VMs)
 
-        [https://kind.sigs.k8s.io/docs/user/quick-start/](https://kind.sigs.k8s.io/docs/user/quick-start/)
+   2. Install `kind` and add it to PATH
 
-        `kind` is a tool for running local Kubernetes clusters and we use it here for testing. The container runtime used by it is `containerd`, which is the same runtime used now by Docker.
+      [https://kind.sigs.k8s.io/docs/user/quick-start/](https://kind.sigs.k8s.io/docs/user/quick-start/)
 
-    3.  Install `kubectl`, which is the command line tool we use to interact with Kubernetes clusters ran locally by `kind`
+      `kind` is a tool for running local Kubernetes clusters and we use it here for testing. The container runtime used by it is `containerd`, which is the same runtime used now by Docker.
 
-        [https://kubernetes.io/docs/tasks/tools/](https://kubernetes.io/docs/tasks/tools/)
+   3. Install `kubectl`, which is the command line tool we use to interact with Kubernetes clusters ran locally by `kind`
+
+      [https://kubernetes.io/docs/tasks/tools/](https://kubernetes.io/docs/tasks/tools/)
 
 2. Run Kubernetes cluster locally for development purposes
-    1. Create a Kubernetes cluster with `kind` using the command (the cluster name is “kind” by default)
 
-    `kind create cluster`
+   1. Create a Kubernetes cluster with `kind` using the command (the cluster name is “kind” by default)
 
-     b.  Output information about the created cluster named “kind” or some cluster name you have chosen using the following command (replacing `<cluster name>` with `kind` if default used)
+   `kind create cluster`
 
-    `kubectl cluster-info --context kind-<cluster name>`
+   b. Output information about the created cluster named “kind” or some cluster name you have chosen using the following command (replacing `<cluster name>` with `kind` if default used)
 
-    You should see an output similar to the following:
+   `kubectl cluster-info --context kind-<cluster name>`
 
-    ```bash
-    Kubernetes control plane is running at https://127.0.0.1:61502
-    CoreDNS is running at https://127.0.0.1:61502/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
-    ```
+   You should see an output similar to the following:
+
+   ```bash
+   Kubernetes control plane is running at https://127.0.0.1:61502
+   CoreDNS is running at https://127.0.0.1:61502/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+   ```
 
 3. Run the `sentry-kubernetes` Go module (which must be performed after the Kubernetes cluster is already running because the module requires the `kubeconfig` file)
-    1. Clone the `sentry-kubernetes` repository
 
-    `git clone https://github.com/getsentry/sentry-kubernetes.git`
+   1. Clone the `sentry-kubernetes` repository
 
-     b.  Pass a valid Sentry DSN to the an environment variable named `SENTRY_DSN` ([https://docs.sentry.io/product/sentry-basics/concepts/dsn-explainer/](https://docs.sentry.io/product/sentry-basics/concepts/dsn-explainer/))
+   `git clone https://github.com/getsentry/sentry-kubernetes.git`
 
-     c. At the root of the repository directory, build the Go module with the command
+   b. Pass a valid Sentry DSN to the an environment variable named `SENTRY_DSN` ([https://docs.sentry.io/product/sentry-basics/concepts/dsn-explainer/](https://docs.sentry.io/product/sentry-basics/concepts/dsn-explainer/))
 
-    `make build`
+   c. At the root of the repository directory, build the Go module with the command
 
-     d. Run the module outside of the k8s cluster by executing the command
+   `make build`
 
-    `go run .`
+   d. Run the module outside of the k8s cluster by executing the command
 
-    which now starts up the process that automatically detects the cluster configuration in order to detect events
+   `go run .`
+
+   which now starts up the process that automatically detects the cluster configuration in order to detect events
 
 4. Add error-producing pods to test event capturing
-    1. Create resources (e.g. pods or deployments) using existing manifests meant to produce errors to be captured by `sentry-kubernetes`. For example, we can apply the manifest for a pod that exhibits crash loop behavior with the command
 
-    `kubectl apply -f ./k8s/errors/pod-crashloop.yaml`
+   1. Create resources (e.g. pods or deployments) using existing manifests meant to produce errors to be captured by `sentry-kubernetes`. For example, we can apply the manifest for a pod that exhibits crash loop behavior with the command
 
-     b. Check that the pod is created using the command
+   `kubectl apply -f ./k8s/errors/pod-crashloop.yaml`
 
-    `kubectl get pods`
+   b. Check that the pod is created using the command
 
-    which should produce an output similar to the following:
+   `kubectl get pods`
 
-    ```bash
-    NAME            READY   STATUS             RESTARTS       AGE
-    pod-crashloop   0/1     CrashLoopBackOff   32 (33s ago)   3h10m
-    ```
+   which should produce an output similar to the following:
 
-    Notice that the Status is `CrashLoopBackOff`, which is the intended state for our purpose
+   ```bash
+   NAME            READY   STATUS             RESTARTS       AGE
+   pod-crashloop   0/1     CrashLoopBackOff   32 (33s ago)   3h10m
+   ```
 
-    c. Check that the `sentry-kubernetes` process capture this crash loop error by checking for the an output similar to the following:
+   Notice that the Status is `CrashLoopBackOff`, which is the intended state for our purpose
 
-    ```bash
-    [Sentry] 2023/11/08 12:07:53 Using release from Git: abc123
-    12:07PM INF Auto-detecting cluster configuration...
-    12:07PM WRN Could not initialize in-cluster config
-    12:07PM INF Detected out-of-cluster configuration
-    12:07PM INF Running integrations...
-    12:07PM INF Watching events starting from: Wed, 08 Nov 2023 12:07:53 -0800 namespace=default watcher=events
-    12:07PM INF CronJob monitoring is disabled namespace=default watcher=events
-    [Sentry] 2023/11/08 12:09:27 Sending error event [w0dc9c22094d7rg9b27afabc868e32] to o4506191942320128.ingest.sentry.io project: 4506191948087296
-    [Sentry] 2023/11/08 12:10:57 Sending error event [4808b623f0eb446eac0eb6c5f0a43681] to o4506191942320128.ingest.sentry.io project: 4506191948087296
-    ```
-    d. Check the `Issues` tab of the corresponding Sentry project to ensure the events captured are shown similar to below:
+   c. Check that the `sentry-kubernetes` process capture this crash loop error by checking for the an output similar to the following:
 
-    ![ExampleEvent](./images/example_event.png)
+   ```bash
+   [Sentry] 2023/11/08 12:07:53 Using release from Git: abc123
+   12:07PM INF Auto-detecting cluster configuration...
+   12:07PM WRN Could not initialize in-cluster config
+   12:07PM INF Detected out-of-cluster configuration
+   12:07PM INF Running integrations...
+   12:07PM INF Watching events starting from: Wed, 08 Nov 2023 12:07:53 -0800 namespace=default watcher=events
+   12:07PM INF CronJob monitoring is disabled namespace=default watcher=events
+   [Sentry] 2023/11/08 12:09:27 Sending error event [w0dc9c22094d7rg9b27afabc868e32] to o4506191942320128.ingest.sentry.io project: 4506191948087296
+   [Sentry] 2023/11/08 12:10:57 Sending error event [4808b623f0eb446eac0eb6c5f0a43681] to o4506191942320128.ingest.sentry.io project: 4506191948087296
+   ```
+
+   d. Check the `Issues` tab of the corresponding Sentry project to ensure the events captured are shown similar to below:
+
+   ![ExampleEvent](./images/example_event.png)
 
 ## Caveats
 
