@@ -2,6 +2,7 @@
 
 # Build the application
 FROM golang:1.20 AS build-stage
+ARG TARGETPLATFORM
 
 WORKDIR /app
 
@@ -10,7 +11,7 @@ RUN go mod download
 
 COPY *.go ./
 
-ENV CGO_ENABLED=0 GOOS=linux
+ENV CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETPLATFORM GO111MODULE=on
 
 RUN go build -o /bin/sentry-kubernetes
 
