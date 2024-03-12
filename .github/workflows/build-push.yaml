@@ -19,11 +19,14 @@ on:
 
 jobs:
   build-and-push:
-    strategy:
-      matrix:
-        arch:
-          - linux/amd64
-          - linux/arm64
+    ## The matrix build doesn't work right now, because the push step for the slowest arch
+    ## will overwrite the metadata for the faster arch.
+    ## We should implement this to fix it: https://docs.docker.com/build/ci/github-actions/multi-platform/#distribute-build-across-multiple-runners
+    # strategy:
+    #   matrix:
+    #     arch:
+    #       - linux/amd64
+    #       - linux/arm64
     permissions:
       packages: write
       contents: read
@@ -58,7 +61,7 @@ jobs:
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         with:
           context: .
-          platforms: "${{ matrix.arch }}"
+          platforms: linux/amd64,linux/arm64
           push: ${{ github.ref == 'refs/heads/master' }}
           tags: |
             ghcr.io/${{ github.repository }}:latest
