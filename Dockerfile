@@ -2,7 +2,7 @@
 
 # Build the application
 FROM golang:1.20 AS build-stage
-ARG TARGETPLATFORM
+ARG TARGETARCH
 
 WORKDIR /app
 
