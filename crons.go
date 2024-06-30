@@ -35,7 +35,7 @@ func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerTy
 		return errors.New("job does not have cronjob reference")
 	}
 	cronjobRef := job.OwnerReferences[0]
-	if !*cronjobRef.Controller || cronjobRef.Kind != KindCronjob {
+	if cronjobRef.Controller == nil || !*cronjobRef.Controller || cronjobRef.Kind != KindCronjob {
 		return errors.New("job does not have cronjob reference")
 	}
 	cronsMonitorData, ok := cronsMetaData.getCronsMonitorData(cronjobRef.Name)
