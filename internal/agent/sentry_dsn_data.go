@@ -124,7 +124,7 @@ func findObject(ctx context.Context, kind string, namespace string, name string)
 
 	switch kind {
 	case KindPod:
-		pod, err := clientset.CoreV1().Pods(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		pod, err := clientset.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return nil, false
 		}
@@ -140,7 +140,7 @@ func findObject(ctx context.Context, kind string, namespace string, name string)
 		}
 		if replicaSet == nil {
 			// Query replicaset with kubernetes API
-			replicaSet, err = clientset.AppsV1().ReplicaSets(namespace).Get(context.Background(), name, metav1.GetOptions{})
+			replicaSet, err = clientset.AppsV1().ReplicaSets(namespace).Get(ctx, name, metav1.GetOptions{})
 			if err != nil {
 				return nil, false
 			}
@@ -157,7 +157,7 @@ func findObject(ctx context.Context, kind string, namespace string, name string)
 		}
 		if deployment == nil {
 			// Query deployment with kubernetes API
-			deployment, err = clientset.AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
+			deployment, err = clientset.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
 			if err != nil {
 				return nil, false
 			}
@@ -174,7 +174,7 @@ func findObject(ctx context.Context, kind string, namespace string, name string)
 		}
 		if job == nil {
 			// Query job with kubernetes API
-			job, err = clientset.BatchV1().Jobs(namespace).Get(context.Background(), name, metav1.GetOptions{})
+			job, err = clientset.BatchV1().Jobs(namespace).Get(ctx, name, metav1.GetOptions{})
 			if err != nil {
 				return nil, false
 			}
@@ -191,7 +191,7 @@ func findObject(ctx context.Context, kind string, namespace string, name string)
 		}
 		if cronjob == nil {
 			// Query cronjob with kubernetes API
-			cronjob, err = clientset.BatchV1().CronJobs(namespace).Get(context.Background(), name, metav1.GetOptions{})
+			cronjob, err = clientset.BatchV1().CronJobs(namespace).Get(ctx, name, metav1.GetOptions{})
 			if err != nil {
 				return nil, false
 			}
