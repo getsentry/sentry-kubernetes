@@ -25,10 +25,10 @@ spec:
                 - /bin/sh
                 - -c
                 - |
-                  MINWAIT=0
-                  MAXWAIT=60
-                  sleep $((MINWAIT+RANDOM % (MAXWAIT-MINWAIT)))
-                  sleep 3
-                  r=$((RANDOM%2))
-                  if [ $r -eq 0 ]; then echo Hello!; else exit 1; fi
+                    MINWAIT=0
+                    MAXWAIT=60
+                    sleep $((MINWAIT+RANDOM % (MAXWAIT-MINWAIT)))
+                    sleep 3
+                    r=$((RANDOM%2))
+                    if [ $r -eq 0 ]; then echo Hello!; else exit 1; fi
           restartPolicy: Never

@@ -2,8 +2,7 @@ version = 1
 agents = ["claude", "cursor", "codex"]
 
 [trust]
-github_orgs = [ "getsentry" ]
-
+github_orgs = ["getsentry"]
 
 [[skills]]
 name = "dotagents"

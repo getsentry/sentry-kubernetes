@@ -14,7 +14,7 @@ spec:
         - sh
         - "-c"
         - |
-          sleep 1
-          invalid_command
+            sleep 1
+            invalid_command
   dnsPolicy: ClusterFirst
   restartPolicy: Always

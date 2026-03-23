@@ -24,9 +24,9 @@ spec:
                 - /bin/sh
                 - -c
                 - |
-                  date 
-                  MINWAIT=0
-                  MAXWAIT=60
-                  sleep $((MINWAIT+RANDOM % (MAXWAIT-MINWAIT)))
-                  echo Hello!
+                    date
+                    MINWAIT=0
+                    MAXWAIT=60
+                    sleep $((MINWAIT+RANDOM % (MAXWAIT-MINWAIT)))
+                    echo Hello!
           restartPolicy: Never

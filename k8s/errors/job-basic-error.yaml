@@ -9,12 +9,12 @@ metadata:
 spec:
   template:
     spec:
-          containers:
-            - name: hello
-              image: busybox:1.28
-              imagePullPolicy: IfNotPresent
-              command:
-                - /bin/sh
-                - -c
-                - sleep 1; invalid_command
-          restartPolicy: Never
+      containers:
+        - name: hello
+          image: busybox:1.28
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - sleep 1; invalid_command
+      restartPolicy: Never

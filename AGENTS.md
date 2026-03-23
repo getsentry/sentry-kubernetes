@@ -6,25 +6,26 @@ Use **Go modules**: `go mod tidy`, `go mod download`
 
 ## Build & Dev Commands
 
-| Command | Description |
-|---------|-------------|
-| `make build` | Build the Go module |
-| `make build-dist` | Build optimized production binary to `dist/` |
-| `make build-docker` | Build Docker image |
-| `make test` | Run all tests |
-| `make test-coverage` | Run tests with coverage report |
-| `make vet` | Run `go vet` static analysis |
-| `make lint` | Run `golangci-lint` |
-| `make lint-fix` | Lint with auto-fix |
-| `make format` | Format code and tidy modules |
-| `make mod-tidy` | Check go.mod tidiness (CI check) |
-| `make fmt-check` | Check formatting (CI check) |
-| `make upgrade-deps` | Update all dependencies |
-| `make help` | Show all available commands |
+| Command              | Description                                  |
+| -------------------- | -------------------------------------------- |
+| `make build`         | Build the Go module                          |
+| `make build-dist`    | Build optimized production binary to `dist/` |
+| `make build-docker`  | Build Docker image                           |
+| `make test`          | Run all tests                                |
+| `make test-coverage` | Run tests with coverage report               |
+| `make vet`           | Run `go vet` static analysis                 |
+| `make lint`          | Run `golangci-lint`                          |
+| `make lint-fix`      | Lint with auto-fix                           |
+| `make format`        | Format code and tidy modules                 |
+| `make mod-tidy`      | Check go.mod tidiness (CI check)             |
+| `make fmt-check`     | Check formatting (CI check)                  |
+| `make upgrade-deps`  | Update all dependencies                      |
+| `make help`          | Show all available commands                  |
 
 ## Commit Attribution
 
 AI commits MUST include:
+
 ```
 Co-Authored-By: (the agent model's name and attribution byline)
 ```
