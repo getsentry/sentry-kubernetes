@@ -18,7 +18,7 @@ Errors and warnings in Kubernetes often go unnoticed by operators. Even when the
 
 - `SENTRY_ENVIRONMENT` - Sentry environment that will be used for reported events.
 
-- `SENTRY_K8S_WATCH_NAMESPACES` - a comma-separated list of namespaces that will be watched. Only the `default` namespace is watched by default. If you want to watch all namespaces, set the varible to value `__all__`.
+- `SENTRY_K8S_WATCH_NAMESPACES` - a comma-separated list of namespaces that will be watched. Only the `default` namespace is watched by default. If you want to watch all namespaces, set the variable to value `__all__`.
 
 - `SENTRY_K8S_WATCH_HISTORICAL` - if set to `1`, all existing (old) events will also be reported. Default is `0` (old events will not be reported).
 
@@ -30,7 +30,7 @@ Errors and warnings in Kubernetes often go unnoticed by operators. Even when the
 
 - `SENTRY_K8S_MONITOR_CRONJOBS` - if set to `1`, enables Sentry Crons integration for `CronJob` objects. Disabled by default.
 
-- `SENTRY_K8S_CUSTOM_DSNS` - if set to `1`, enables custom DSN to be specified in the `annotations` with key `k8s.sentry.io/dsn` which would take precedence over `SENTRY_DSN. Disabled by default.
+- `SENTRY_K8S_CUSTOM_DSNS` - if set to `1`, enables custom DSN to be specified in the `annotations` with key `k8s.sentry.io/dsn` which would take precedence over `SENTRY_DSN`. Disabled by default.
 
 ### Adding custom tags
 
@@ -38,7 +38,7 @@ To add a custom tag to all events produced by the agent, set an environment vari
 
 **Example:**
 
-`SENTRY_K8S_GLOBAL_TAG_cluster_name=main-cluster` will add `cluster_name=main_cluster` tag to every outgoing Sentry event.
+`SENTRY_K8S_GLOBAL_TAG_cluster_name=main-cluster` will add `cluster_name=main-cluster` tag to every outgoing Sentry event.
 
 ### Integrations
 
@@ -98,7 +98,7 @@ A useful feature offered by Sentry is [Crons Monitoring](https://docs.sentry.io/
 
 The agent automatically creates a Crons monitor for any detected `CronJob` with the monitor slug name to be the name of the `CronJob`. Additionally, the schedule is automatically taken from the `CronJob` manifest.
 
-Moreover, any the events of any resource object (e.g. `pod`, `job`, `event`) that is associated with a `CronJob` will have the corresponding monitor slug name is a metadata. This allows the grouping of events based on Crons monitors in Issues as well.
+Moreover, any events of any resource object (e.g. `pod`, `job`, `event`) that is associated with a `CronJob` will have the corresponding monitor slug name as metadata. This allows the grouping of events based on Crons monitors in Issues as well.
 
 **Crons Example**
 
@@ -183,7 +183,7 @@ In the Sentry Crons tab of the corresponding project, we may see the following:
 
     `git clone https://github.com/getsentry/sentry-kubernetes.git`
 
-     b.  Pass a valid Sentry DSN to the an environment variable named `SENTRY_DSN` ([https://docs.sentry.io/product/sentry-basics/concepts/dsn-explainer/](https://docs.sentry.io/product/sentry-basics/concepts/dsn-explainer/))
+     b.  Pass a valid Sentry DSN to an environment variable named `SENTRY_DSN` ([https://docs.sentry.io/product/sentry-basics/concepts/dsn-explainer/](https://docs.sentry.io/product/sentry-basics/concepts/dsn-explainer/))
 
      c. At the root of the repository directory, build the Go module with the command
 
@@ -213,7 +213,7 @@ In the Sentry Crons tab of the corresponding project, we may see the following:
 
     Notice that the Status is `CrashLoopBackOff`, which is the intended state for our purpose
 
-    c. Check that the `sentry-kubernetes` process capture this crash loop error by checking for the an output similar to the following:
+    c. Check that the `sentry-kubernetes` process capture this crash loop error by checking for an output similar to the following:
 
     ```bash
     [Sentry] 2023/11/08 12:07:53 Using release from Git: abc123

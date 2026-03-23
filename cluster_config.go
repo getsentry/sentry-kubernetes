@@ -33,7 +33,7 @@ func getClusterConfig() (*rest.Config, error) {
 		configType != typeInCluster &&
 		configType != typeOutCluster {
 		log.Fatal().Msgf(
-			"Infalid cluster configuration type provided in SENTRY_K8S_CLUSTER_CONFIG_TYPE: %s",
+			"Invalid cluster configuration type provided in SENTRY_K8S_CLUSTER_CONFIG_TYPE: %s",
 			configType,
 		)
 	}
