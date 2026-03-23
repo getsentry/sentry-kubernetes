@@ -93,7 +93,7 @@ func TestRunEnhancers(t *testing.T) {
 
 	// Apply the scope to the event
 	// so we can check the tags
-	scope.ApplyToEvent(event, nil)
+	scope.ApplyToEvent(event, nil, nil)
 
 	expectedTags := map[string]string{
 		"node_name": "TestRunPodEnhancerNode",

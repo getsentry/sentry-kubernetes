@@ -1,9 +1,9 @@
 module github.com/getsentry/sentry-kubernetes
 
-go 1.20
+go 1.24.0
 
 require (
-	github.com/getsentry/sentry-go v0.25.0
+	github.com/getsentry/sentry-go v0.43.0
 	github.com/rs/zerolog v1.29.1
 	k8s.io/api v0.25.12
 	k8s.io/apimachinery v0.25.12

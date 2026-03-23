@@ -40,7 +40,7 @@ func getNamespacesToWatch() (watchAll bool, namespaces []string, err error) {
 		errors := validation.IsValidLabelValue(namespace)
 		if len(errors) != 0 {
 			// Not a valid namespace name
-			return false, []string{}, fmt.Errorf(errors[0])
+			return false, []string{}, fmt.Errorf("%s", errors[0])
 		}
 		namespaces = append(namespaces, namespace)
 	}

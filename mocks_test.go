@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -19,6 +20,10 @@ func (t *TransportMock) SendEvent(event *sentry.Event) {
 	t.events = append(t.events, event)
 }
 func (t *TransportMock) Flush(timeout time.Duration) bool {
+	return true
+}
+func (t *TransportMock) Close() {}
+func (t *TransportMock) FlushWithContext(ctx context.Context) bool {
 	return true
 }
 func (t *TransportMock) Events() []*sentry.Event {
