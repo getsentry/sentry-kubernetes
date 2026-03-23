@@ -1,0 +1,50 @@
+version = 1
+agents = ["claude", "cursor", "codex"]
+
+[trust]
+github_orgs = [ "getsentry" ]
+
+
+[[skills]]
+name = "dotagents"
+source = "getsentry/dotagents"
+
+[[skills]]
+name = "agents-md"
+source = "getsentry/sentry-skills"
+
+[[skills]]
+name = "commit"
+source = "getsentry/sentry-skills"
+
+[[skills]]
+name = "create-branch"
+source = "getsentry/sentry-skills"
+
+[[skills]]
+name = "create-pr"
+source = "getsentry/sentry-skills"
+
+[[skills]]
+name = "iterate-pr"
+source = "getsentry/sentry-skills"
+
+[[skills]]
+name = "pr-writer"
+source = "getsentry/sentry-skills"
+
+[[skills]]
+name = "code-review"
+source = "getsentry/sentry-skills"
+
+[[skills]]
+name = "code-simplifier"
+source = "getsentry/sentry-skills"
+
+[[skills]]
+name = "sentry-code-review"
+source = "getsentry/sentry-for-ai"
+
+[[skills]]
+name = "sentry-go-sdk"
+source = "getsentry/sentry-for-ai"
