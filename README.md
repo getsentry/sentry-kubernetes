@@ -26,7 +26,7 @@ Errors and warnings in Kubernetes often go unnoticed by operators. Even when the
 
 - `SENTRY_K8S_KUBECONFIG_PATH` - filesystem path to the `kubeconfig` configuration that will be used to connect to the cluster. Not used if `SENTRY_K8S_CLUSTER_CONFIG_TYPE` is set to `in-cluster`.
 
-- `SENTRY_K8S_LOG_LEVEL` - logging level. Can be `trace`, `debug`, `info`, `warn`, `error`, `disabled`. Default is `info`.
+- `SENTRY_K8S_LOG_LEVEL` - logging level. Can be `trace`, `debug`, `info`, `warn`, `error`, `fatal`, `panic`, `disabled`. Default is `info`.
 
 - `SENTRY_K8S_MONITOR_CRONJOBS` - if set to `1`, enables Sentry Crons integration for `CronJob` objects. Disabled by default.
 
