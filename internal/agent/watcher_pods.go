@@ -207,6 +207,7 @@ func watchPodsInNamespaceForever(ctx context.Context, config *rest.Config, names
 				time.Sleep(b.duration())
 			} else {
 				b.reset()
+				time.Sleep(time.Second)
 			}
 		}
 	}

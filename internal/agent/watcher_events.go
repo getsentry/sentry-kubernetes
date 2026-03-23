@@ -252,6 +252,7 @@ func watchEventsInNamespaceForever(ctx context.Context, config *rest.Config, nam
 				time.Sleep(b.duration())
 			} else {
 				b.reset()
+				time.Sleep(time.Second)
 			}
 			watchSince = time.Now()
 		}
