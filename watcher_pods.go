@@ -140,7 +140,7 @@ func watchPodsInNamespace(ctx context.Context, namespace string) (err error) {
 		return err
 	}
 
-	watchFunc := func(options metav1.ListOptions) (watch.Interface, error) {
+	watchFunc := func(_ metav1.ListOptions) (watch.Interface, error) {
 		opts := metav1.ListOptions{
 			Watch: true,
 		}
@@ -193,19 +193,24 @@ func watchPodsInNamespaceForever(ctx context.Context, config *rest.Config, names
 
 	// Start the informers for Sentry event capturing
 	// and caching with the indexers
-	go startInformers(ctx, namespace)
+	go startInformers(ctx, namespace) //nolint:errcheck
 
 	for {
-		if err := watchPodsInNamespace(ctx, namespace); err != nil {
-			logger.Error().Msgf("Error while watching pods %s: %s", where, err)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			if err := watchPodsInNamespace(ctx, namespace); err != nil {
+				logger.Error().Msgf("Error while watching pods %s: %s", where, err)
+			}
+			// Note: some events might be lost when we're sleeping here
+			time.Sleep(time.Second * 1)
 		}
-		// Note: some events might be lost when we're sleeping here
-		time.Sleep(time.Second * 1)
 	}
 }
 
 func startPodWatchers(ctx context.Context, config *rest.Config, namespaces []string) {
 	for _, namespace := range namespaces {
-		go watchPodsInNamespaceForever(ctx, config, namespace)
+		go watchPodsInNamespaceForever(ctx, config, namespace) //nolint:errcheck
 	}
 }

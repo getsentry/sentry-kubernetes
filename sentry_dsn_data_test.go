@@ -12,6 +12,8 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
+const testFakeDSN = "https://c6f9a148ee0775891414b50b9af35959@o4506191942320128.ingest.sentry.io/1234567890"
+
 func TestNewDsnClientMapping(t *testing.T) {
 	// Set the custom dsn flag as true
 	t.Setenv("SENTRY_K8S_CUSTOM_DSNS", "TRUE")
@@ -32,7 +34,7 @@ func TestNewDsnClientMapping(t *testing.T) {
 }
 
 func TestAddClientToMap(t *testing.T) {
-	fakeDsn := "https://c6f9a148ee0775891414b50b9af35959@o4506191942320128.ingest.sentry.io/1234567890"
+	fakeDsn := testFakeDSN
 	clientOptions := sentry.ClientOptions{
 		Dsn: fakeDsn,
 	}
@@ -66,7 +68,7 @@ func TestAddClientToMap(t *testing.T) {
 }
 
 func TestGetClientFromMap(t *testing.T) {
-	fakeDsn := "https://c6f9a148ee0775891414b50b9af35959@o4506191942320128.ingest.sentry.io/1234567890"
+	fakeDsn := testFakeDSN
 	clientOptions := sentry.ClientOptions{
 		Dsn: fakeDsn,
 	}
@@ -91,7 +93,7 @@ func TestGetClientFromObject(t *testing.T) {
 	// Set the custom dsn flag as true
 	t.Setenv("SENTRY_K8S_CUSTOM_DSNS", "TRUE")
 	clientMapping := NewDsnClientMapping()
-	fakeDsn := "https://c6f9a148ee0775891414b50b9af35959@o4506191942320128.ingest.sentry.io/1234567890"
+	fakeDsn := testFakeDSN
 
 	// Create empty context
 	ctx := context.Background()
@@ -153,7 +155,7 @@ func TestSearchDsn(t *testing.T) {
 	// Create simple fake client
 	fakeClientset := fake.NewSimpleClientset()
 
-	fakeDsn := "https://c6f9a148ee0775891414b50b9af35959@o4506191942320128.ingest.sentry.io/1234567890"
+	fakeDsn := testFakeDSN
 
 	// Create annotation map that includes the DSN
 	annotations := make(map[string]string)

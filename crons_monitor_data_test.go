@@ -8,8 +8,14 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	testFakeID       = "080181f33ca343f89b0bf55d50abfeee"
+	testFakeSchedule = "* * * * *"
+	testCronJobName  = "TestAddCronsMonitorDataCronJob"
+)
+
 func TestNewCronsJobData(t *testing.T) {
-	fakeID := "080181f33ca343f89b0bf55d50abfeee"
+	fakeID := testFakeID
 
 	cronsJobData := NewCronsJobData(sentry.EventID(fakeID))
 	if cronsJobData == nil {
@@ -22,7 +28,7 @@ func TestNewCronsJobData(t *testing.T) {
 }
 
 func TestGetCheckinId(t *testing.T) {
-	fakeID := "080181f33ca343f89b0bf55d50abfeee"
+	fakeID := testFakeID
 
 	cronsJobData := NewCronsJobData(sentry.EventID(fakeID))
 	if cronsJobData == nil {
@@ -36,7 +42,7 @@ func TestGetCheckinId(t *testing.T) {
 
 func TestNewCronsMonitorData(t *testing.T) {
 	fakeMonitorSlug := "cronjob-slug"
-	fakeSchedule := "* * * * *"
+	fakeSchedule := testFakeSchedule
 	var fakeCompletions int32 = 3
 
 	cronsMonitorData := NewCronsMonitorData(fakeMonitorSlug, fakeSchedule, &fakeCompletions)
@@ -56,9 +62,9 @@ func TestNewCronsMonitorData(t *testing.T) {
 }
 
 func TestAddJob(t *testing.T) {
-	fakeID := "080181f33ca343f89b0bf55d50abfeee"
+	fakeID := testFakeID
 	fakeMonitorSlug := "cronjob-slug"
-	fakeSchedule := "* * * * *"
+	fakeSchedule := testFakeSchedule
 	var fakeCompletions int32 = 3
 
 	cronsMonitorData := NewCronsMonitorData(fakeMonitorSlug, fakeSchedule, &fakeCompletions)
@@ -95,8 +101,8 @@ func TestAddCronsMonitorData(t *testing.T) {
 		t.Errorf("Failed to create cronsMonitorDataMap")
 	}
 
-	cronjobName := "TestAddCronsMonitorDataCronJob"
-	fakeSchedule := "* * * * *"
+	cronjobName := testCronJobName
+	fakeSchedule := testFakeSchedule
 	var fakeCompletions int32 = 3
 	cronsMonitorData := NewCronsMonitorData(cronjobName, fakeSchedule, &fakeCompletions)
 
@@ -117,16 +123,16 @@ func TestDeleteCronsMonitorData(t *testing.T) {
 		t.Errorf("Failed to create cronsMonitorDataMap")
 	}
 
-	fakeMonitorSlug := "TestAddCronsMonitorDataCronJob"
-	fakeSchedule := "* * * * *"
+	fakeMonitorSlug := testCronJobName
+	fakeSchedule := testFakeSchedule
 	var fakeCompletions int32 = 3
 	cronsMonitorData := NewCronsMonitorData(fakeMonitorSlug, fakeSchedule, &fakeCompletions)
 
-	cronsMetaData.cronsMonitorDataMap["TestAddCronsMonitorDataCronJob"] = cronsMonitorData
+	cronsMetaData.cronsMonitorDataMap[testCronJobName] = cronsMonitorData
 
-	cronsMetaData.deleteCronsMonitorData("TestAddCronsMonitorDataCronJob")
+	cronsMetaData.deleteCronsMonitorData(testCronJobName)
 
-	_, ok := cronsMetaData.cronsMonitorDataMap["TestAddCronsMonitorDataCronJob"]
+	_, ok := cronsMetaData.cronsMonitorDataMap[testCronJobName]
 
 	if ok {
 		t.Errorf("Failed to delete cronsMonitorData from map")
@@ -139,14 +145,14 @@ func TestGetCronsMonitorData(t *testing.T) {
 		t.Errorf("Failed to create cronsMonitorDataMap")
 	}
 
-	fakeMonitorSlug := "TestAddCronsMonitorDataCronJob"
-	fakeSchedule := "* * * * *"
+	fakeMonitorSlug := testCronJobName
+	fakeSchedule := testFakeSchedule
 	var fakeCompletions int32 = 3
 	cronsMonitorData := NewCronsMonitorData(fakeMonitorSlug, fakeSchedule, &fakeCompletions)
 
-	cronsMetaData.cronsMonitorDataMap["TestAddCronsMonitorDataCronJob"] = cronsMonitorData
+	cronsMetaData.cronsMonitorDataMap[testCronJobName] = cronsMonitorData
 
-	retCronsMonitorData, ok := cronsMetaData.getCronsMonitorData("TestAddCronsMonitorDataCronJob")
+	retCronsMonitorData, ok := cronsMetaData.getCronsMonitorData(testCronJobName)
 	if !ok {
 		t.Errorf("Failed to get cronsMonitorData to map")
 	}

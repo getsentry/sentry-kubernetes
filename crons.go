@@ -20,7 +20,7 @@ const (
 // Captures sentry crons checkin event if appropriate
 // by checking the job status to determine if the job just created pod (job starting)
 // or if the job exited
-func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerType EventHandlerType) error {
+func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, _ EventHandlerType) error {
 	hub := sentry.GetHubFromContext(ctx)
 	if hub == nil {
 		return errors.New("cannot get hub from context")
@@ -43,7 +43,7 @@ func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerTy
 		return errors.New("cannot find cronJob data")
 	}
 
-	hub.WithScope(func(scope *sentry.Scope) {
+	hub.WithScope(func(_ *sentry.Scope) {
 		// If DSN annotation provided, we bind a new client with that DSN
 		client, ok := dsnClientMapping.GetClientFromObject(ctx, &job.ObjectMeta, hub.Client().Options())
 		if ok {
@@ -53,15 +53,16 @@ func runSentryCronsCheckin(ctx context.Context, job *batchv1.Job, eventHandlerTy
 		// Pass clone hub down with context
 		ctx = sentry.SetHubOnContext(ctx, hub)
 		// The job just begun so check in to start
-		if job.Status.Active == 0 && job.Status.Succeeded == 0 && job.Status.Failed == 0 {
+		switch {
+		case job.Status.Active == 0 && job.Status.Succeeded == 0 && job.Status.Failed == 0:
 			// Add the job to the cronJob informer data
 			err := checkinJobStarting(ctx, job, cronsMonitorData)
 			if err != nil {
 				return
 			}
-		} else if job.Status.Active > 0 {
+		case job.Status.Active > 0:
 			return
-		} else if job.Status.Failed > 0 || job.Status.Succeeded > 0 {
+		case job.Status.Failed > 0 || job.Status.Succeeded > 0:
 			err := checkinJobEnding(ctx, job, cronsMonitorData)
 			if err != nil {
 				return
@@ -119,14 +120,14 @@ func checkinJobEnding(ctx context.Context, job *batchv1.Job, cronsMonitorData *C
 
 	if job.Status.Conditions == nil {
 		return nil
-	} else {
-		if job.Status.Conditions[0].Type == "Complete" {
-			jobStatus = sentry.CheckInStatusOK
-		} else if job.Status.Conditions[0].Type == "Failed" {
-			jobStatus = sentry.CheckInStatusError
-		} else {
-			return nil
-		}
+	}
+	switch job.Status.Conditions[0].Type {
+	case "Complete":
+		jobStatus = sentry.CheckInStatusOK
+	case "Failed":
+		jobStatus = sentry.CheckInStatusError
+	default:
+		return nil
 	}
 
 	// Get job data to retrieve the checkin ID

@@ -23,9 +23,9 @@ func getClientsetFromContext(ctx context.Context) (ClientsetInterface, error) {
 	if val == nil {
 		return nil, fmt.Errorf("no clientset present on context")
 	}
-	if clientset, ok := val.(ClientsetInterface); ok {
-		return clientset, nil
-	} else {
+	clientset, ok := val.(ClientsetInterface)
+	if !ok {
 		return nil, fmt.Errorf("cannot convert clientset value from context")
 	}
+	return clientset, nil
 }

@@ -4,6 +4,6 @@ import (
 	"testing"
 )
 
-func TestCheckCommonEnhancerPatterns(t *testing.T) {
+func TestCheckCommonEnhancerPatterns(_ *testing.T) {
 	checkCommonEnhancerPatterns()
 }

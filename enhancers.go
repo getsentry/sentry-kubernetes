@@ -151,7 +151,7 @@ func getKindEnhancer(kind string) func(context.Context, *sentry.Scope, metav1.Ob
 	case KindCronjob:
 		return cronjobEnhancer
 	default:
-		return func(ctx context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
+		return func(_ context.Context, _ *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
 			sentryEvent.Fingerprint = append(sentryEvent.Fingerprint, object.GetName())
 			return nil
 		}
@@ -193,7 +193,7 @@ func podEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object,
 	return nil
 }
 
-func jobEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
+func jobEnhancer(_ context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
 	jobObj, ok := object.(*batchv1.Job)
 	if !ok {
 		return errors.New("failed to cast object to Job object")
@@ -222,7 +222,7 @@ func jobEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object,
 	return nil
 }
 
-func cronjobEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
+func cronjobEnhancer(_ context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
 	cronjobObj, ok := object.(*batchv1.CronJob)
 	if !ok {
 		return errors.New("failed to cast object to CronJob object")
@@ -256,7 +256,7 @@ func cronjobEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Obj
 	return nil
 }
 
-func replicaSetEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
+func replicaSetEnhancer(_ context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
 	replicasetObj, ok := object.(*appsv1.ReplicaSet)
 	if !ok {
 		return errors.New("failed to cast object to ReplicaSet object")
@@ -285,7 +285,7 @@ func replicaSetEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.
 	return nil
 }
 
-func deploymentEnhancer(ctx context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
+func deploymentEnhancer(_ context.Context, scope *sentry.Scope, object metav1.Object, sentryEvent *sentry.Event) error {
 	deploymentObj, ok := object.(*appsv1.Deployment)
 	if !ok {
 		return errors.New("failed to cast object to Deployment object")

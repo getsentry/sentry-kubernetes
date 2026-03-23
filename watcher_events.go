@@ -54,7 +54,7 @@ func handleGeneralEvent(ctx context.Context, eventObject *v1.Event, scope *sentr
 	eventObject.InvolvedObject = v1.ObjectReference{}
 
 	// clean-up the event a bit
-	eventObject.ObjectMeta.ManagedFields = []metav1.ManagedFieldsEntry{}
+	eventObject.ManagedFields = []metav1.ManagedFieldsEntry{}
 	if metadata, err := prettyJSON(eventObject.ObjectMeta); err == nil {
 		scope.SetContext("Event", sentry.Context{
 			"Metadata": metadata,
@@ -178,7 +178,7 @@ func watchEventsInNamespace(ctx context.Context, namespace string, watchSince ti
 		return err
 	}
 
-	watchFunc := func(options metav1.ListOptions) (watch.Interface, error) {
+	watchFunc := func(_ metav1.ListOptions) (watch.Interface, error) {
 		opts := metav1.ListOptions{
 			Watch: true,
 		}
@@ -241,16 +241,21 @@ func watchEventsInNamespaceForever(ctx context.Context, config *rest.Config, nam
 	ctx = setClientsetOnContext(ctx, clientset)
 
 	for {
-		if err := watchEventsInNamespace(ctx, namespace, watchSince); err != nil {
-			logger.Error().Msgf("Error while watching events %s: %s", where, err)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			if err := watchEventsInNamespace(ctx, namespace, watchSince); err != nil {
+				logger.Error().Msgf("Error while watching events %s: %s", where, err)
+			}
+			watchSince = time.Now()
+			time.Sleep(time.Second * 1)
 		}
-		watchSince = time.Now()
-		time.Sleep(time.Second * 1)
 	}
 }
 
 func startEventWatchers(ctx context.Context, config *rest.Config, namespaces []string) {
 	for _, namespace := range namespaces {
-		go watchEventsInNamespaceForever(ctx, config, namespace)
+		go watchEventsInNamespaceForever(ctx, config, namespace) //nolint:errcheck
 	}
 }

@@ -13,9 +13,9 @@ type CronsJobData struct {
 }
 
 // Constructor for cronsMonitorData
-func NewCronsJobData(checkinId sentry.EventID) *CronsJobData {
+func NewCronsJobData(checkinID sentry.EventID) *CronsJobData {
 	return &CronsJobData{
-		CheckinID: checkinId,
+		CheckinID: checkinID,
 	}
 }
 

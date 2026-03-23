@@ -9,7 +9,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-func beforeSend(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
+func beforeSend(event *sentry.Event, _ *sentry.EventHint) *sentry.Event {
 	// Update SDK info
 	event.Sdk.Name = "getsentry.sentry-kubernetes"
 	event.Sdk.Version = version

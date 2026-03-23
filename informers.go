@@ -31,25 +31,13 @@ func startInformers(ctx context.Context, namespace string) error {
 	)
 
 	// Create the job informer
-	jobInformer, err = createJobInformer(ctx, factory)
-	if err != nil {
-		return err
-	}
+	jobInformer = createJobInformer(ctx, factory)
 	// Create the cronjob informer
-	cronjobInformer, err = createCronjobInformer(ctx, factory)
-	if err != nil {
-		return err
-	}
+	cronjobInformer = createCronjobInformer(ctx, factory)
 	// Create the replicaset informer
-	replicasetInformer, err = createReplicasetInformer(ctx, factory)
-	if err != nil {
-		return err
-	}
+	replicasetInformer = createReplicasetInformer(ctx, factory)
 	// Create the deployment informer
-	deploymentInformer, err = createDeploymentInformer(ctx, factory)
-	if err != nil {
-		return err
-	}
+	deploymentInformer = createDeploymentInformer(ctx, factory)
 
 	// Channel to tell the factory to stop the informers
 	doneChan := make(chan struct{})

@@ -11,7 +11,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-func createJobInformer(ctx context.Context, factory informers.SharedInformerFactory) (cache.SharedIndexInformer, error) {
+func createJobInformer(ctx context.Context, factory informers.SharedInformerFactory) cache.SharedIndexInformer {
 	logger := zerolog.Ctx(ctx)
 
 	logger.Debug().Msgf("starting job informer\n")
@@ -36,7 +36,7 @@ func createJobInformer(ctx context.Context, factory informers.SharedInformerFact
 		if oldJob.ResourceVersion == newJob.ResourceVersion {
 			logger.Debug().Msgf("UPDATE: Event sync %s/%s\n", oldJob.GetNamespace(), oldJob.GetName())
 		} else {
-			runSentryCronsCheckin(ctx, newJob, EventHandlerUpdate)
+			_ = runSentryCronsCheckin(ctx, newJob, EventHandlerUpdate)
 		}
 	}
 
@@ -57,5 +57,5 @@ func createJobInformer(ctx context.Context, factory informers.SharedInformerFact
 		logger.Info().Msgf("Cronjob monitoring is disabled")
 	}
 
-	return jobInformer, nil
+	return jobInformer
 }
