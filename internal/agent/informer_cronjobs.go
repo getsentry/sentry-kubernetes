@@ -46,7 +46,9 @@ func createCronjobInformer(ctx context.Context, factory informers.SharedInformer
 	// Check if cronjob monitoring is enabled
 	if isTruthy(os.Getenv("SENTRY_K8S_MONITOR_CRONJOBS")) {
 		logger.Info().Msgf("Add cronjob informer handlers for cronjob monitoring")
-		cronjobInformer.AddEventHandler(handler)
+		if _, err := cronjobInformer.AddEventHandler(handler); err != nil {
+			logger.Error().Msgf("Failed to add cronjob event handler: %s", err)
+		}
 	} else {
 		logger.Info().Msgf("Cronjob monitoring is disabled")
 	}

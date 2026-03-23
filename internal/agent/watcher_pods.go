@@ -147,7 +147,7 @@ func watchPodsInNamespace(ctx context.Context, namespace string) (err error) {
 		return clientset.CoreV1().Pods(namespace).Watch(ctx, opts)
 	}
 	logger.Debug().Msg("Getting the pod watcher")
-	retryWatcher, err := toolsWatch.NewRetryWatcher("1", &cache.ListWatch{WatchFunc: watchFunc})
+	retryWatcher, err := toolsWatch.NewRetryWatcherWithContext(ctx, "1", &cache.ListWatch{WatchFunc: watchFunc})
 	if err != nil {
 		return err
 	}

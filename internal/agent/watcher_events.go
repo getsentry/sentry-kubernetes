@@ -185,7 +185,7 @@ func watchEventsInNamespace(ctx context.Context, namespace string, watchSince ti
 		return clientset.CoreV1().Events(namespace).Watch(ctx, opts)
 	}
 	logger.Debug().Msg("Getting the event watcher")
-	retryWatcher, err := toolsWatch.NewRetryWatcher("1", &cache.ListWatch{WatchFunc: watchFunc})
+	retryWatcher, err := toolsWatch.NewRetryWatcherWithContext(ctx, "1", &cache.ListWatch{WatchFunc: watchFunc})
 	if err != nil {
 		return err
 	}
