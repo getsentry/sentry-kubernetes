@@ -39,8 +39,8 @@ Co-Authored-By: (the agent model's name and attribution byline)
 
 ## Project Structure
 
-- Flat Go package in root (no `cmd/` or `internal/` layout)
-- All `.go` source files in project root
+- `cmd/agent/main.go` - Application entry point
+- `internal/agent/` - All business logic and handlers
 - `k8s/manifests/` - Kubernetes deployment manifests
 - `k8s/errors/` - Test error scenario manifests
 - `.github/workflows/` - CI/CD pipelines
