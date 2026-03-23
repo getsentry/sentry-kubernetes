@@ -1,65 +1,122 @@
+# =============================================================================
+# SENTRY KUBERNETES AGENT MAKEFILE
+# =============================================================================
+# This Makefile provides automation for building, testing, and developing
+# the Sentry Kubernetes Agent. Run 'make help' to see all available commands.
+# =============================================================================
+
+# Default target - show help when running 'make' without arguments
 .DEFAULT_GOAL := help
 
-MKFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
-MKFILE_DIR := $(dir $(MKFILE_PATH))
 # In seconds
 TIMEOUT = 60
 
-# Parse Makefile and display the help
-help: ## Show help
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
-.PHONY: help
+# =============================================================================
+# BUILDING
+# =============================================================================
 
-docker-build:
-	docker build -t sentry-kubernetes .
-.PHONY: docker-build
-
-upload-image-kind: docker-build
-	kind load docker-image sentry-kubernetes
-.PHONY: upload-image-kind
-
-test: ## Run tests
-	go test -v -count=1 -race -timeout $(TIMEOUT)s ./...
-.PHONY: test
-
-# Coverage
-COVERAGE_MODE       = atomic
-COVERAGE_PROFILE    = coverage.out
-COVERAGE_REPORT_DIR = .coverage
-COVERAGE_REPORT_DIR_ABS  = $(MKFILE_DIR)/$(COVERAGE_REPORT_DIR)
-COVERAGE_REPORT_FILE_ABS = $(COVERAGE_REPORT_DIR_ABS)/$(COVERAGE_PROFILE)
-$(COVERAGE_REPORT_DIR):
-	mkdir -p $(COVERAGE_REPORT_DIR)
-clean-report-dir: $(COVERAGE_REPORT_DIR)
-	test $(COVERAGE_REPORT_DIR) && rm -f $(COVERAGE_REPORT_DIR)/*
-test-coverage: $(COVERAGE_REPORT_DIR) clean-report-dir  ## Test with coverage enabled
-	set -e ; \
-	go test -count=1 -race -timeout $(TIMEOUT)s -coverpkg=./... -covermode=$(COVERAGE_MODE) -coverprofile="$(COVERAGE_REPORT_FILE_ABS)" ./... ; \
-	go tool cover -html="$(COVERAGE_REPORT_FILE_ABS)" -o "$(COVERAGE_REPORT_DIR_ABS)/coverage.html";
-.PHONY: test-coverage clean-report-dir
-
-build: ## Build the module
-	go build ./...
+## Build the Go module
 .PHONY: build
+build:
+	go build ./...
 
-mod-tidy: ## Check go.mod tidiness
-	go mod tidy; \
-		git diff --exit-code;
-.PHONY: mod-tidy
+## Build production binary optimized for deployment
+.PHONY: build-dist
+build-dist:
+	mkdir -p dist
+	go build -ldflags="-s -w" -trimpath -o dist/sentry-kubernetes .
 
-vet: ## Run "go vet"
-	go vet ./...
+## Build Docker image
+.PHONY: build-docker
+build-docker:
+	docker build -t sentry-kubernetes .
+
+## Build Docker image and load into kind cluster
+.PHONY: upload-image-kind
+upload-image-kind: build-docker
+	kind load docker-image sentry-kubernetes
+
+# =============================================================================
+# TESTING & QUALITY ASSURANCE
+# =============================================================================
+
+## Run all tests
+.PHONY: test
+test:
+	go test -v -count=1 -race -timeout $(TIMEOUT)s ./...
+
+## Run tests with coverage report
+.PHONY: test-coverage
+test-coverage:
+	mkdir -p .coverage
+	go test -count=1 -race -timeout $(TIMEOUT)s \
+		-coverpkg=./... \
+		-covermode=atomic \
+		-coverprofile=.coverage/coverage.out \
+		./...
+	go tool cover -html=.coverage/coverage.out -o .coverage/coverage.html
+
+## Run static analysis (go vet)
 .PHONY: vet
+vet:
+	go vet ./...
 
-fmt: ## Run "go fmt"
-	go fmt ./...; \
-		git diff --exit-code;
-.PHONY: fmt
-
-lint: ## Lint (using "golangci-lint")
-	golangci-lint run -v $(ARGS)
+## Lint using golangci-lint
 .PHONY: lint
+lint:
+	golangci-lint run -v $(ARGS)
 
-lint-fix: ARGS=--fix
-lint-fix: lint ### Lint and apply fixes (when applicable)
+## Lint and apply fixes (when applicable)
 .PHONY: lint-fix
+lint-fix: ARGS=--fix
+lint-fix: lint
+
+# =============================================================================
+# FORMATTING & MAINTENANCE
+# =============================================================================
+
+## Format code and tidy modules
+.PHONY: format
+format:
+	go mod tidy
+	go fmt ./...
+
+## Check go.mod tidiness (fails if not tidy)
+.PHONY: mod-tidy
+mod-tidy:
+	go mod tidy
+	git diff --exit-code
+
+## Check formatting (fails if not formatted)
+.PHONY: fmt-check
+fmt-check:
+	go fmt ./...
+	git diff --exit-code
+
+## Update all dependencies to latest compatible versions
+.PHONY: upgrade-deps
+upgrade-deps:
+	go get -u ./...
+	$(MAKE) format
+
+# =============================================================================
+# HELP & DOCUMENTATION
+# =============================================================================
+
+## Show this help message with all available commands
+.PHONY: help
+help:
+	@echo "============================================================================="
+	@echo "SENTRY KUBERNETES AGENT - DEVELOPMENT COMMANDS"
+	@echo "============================================================================="
+	@echo ""
+	@awk 'BEGIN { desc = ""; target = "" } \
+	/^## / { desc = substr($$0, 4) } \
+	/^\.PHONY: / && desc != "" { \
+		target = $$2; \
+		printf "\033[36m%-20s\033[0m %s\n", target, desc; \
+		desc = ""; target = "" \
+	}' $(MAKEFILE_LIST)
+	@echo ""
+	@echo "Use 'make <command>' to run any command above."
+	@echo ""
