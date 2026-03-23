@@ -48,6 +48,18 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      - id: go-fix
+        name: Go Fix
+        description: "Run go fix"
+        entry: go
+        language: system
+        args:
+          - "fix"
+          - "./..."
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       - id: make-vet
         name: Go Vet
         description: "Run go vet"
