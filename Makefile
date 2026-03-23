@@ -12,6 +12,46 @@
 TIMEOUT = 60
 
 # =============================================================================
+# SETUP & INSTALLATION
+# =============================================================================
+
+## Initialize project for development (installs all dependencies)
+.PHONY: init
+init:
+	@if [ "$$(uname)" = "Darwin" ]; then \
+		echo "Darwin detected."; \
+		$(MAKE) init-darwin; \
+	elif [ "$$(uname)" = "Linux" ]; then \
+		echo "Linux detected."; \
+		$(MAKE) init-linux; \
+	else \
+		echo "Not running on Darwin or Linux."; \
+		exit 1; \
+	fi
+	$(MAKE) install
+	pre-commit install
+
+.PHONY: init-darwin
+init-darwin:
+	@if ! command -v brew >/dev/null 2>&1; then \
+		echo "Homebrew not detected. Skipping system dependency installation."; \
+	else \
+		echo "Homebrew detected. Installing system dependencies..."; \
+		brew bundle; \
+	fi
+
+.PHONY: init-linux
+init-linux:
+	@if ! command -v dprint >/dev/null 2>&1; then \
+		echo "dprint not detected. Please install: curl -fsSL https://dprint.dev/install.sh | sh"; \
+	fi
+
+## Install and tidy Go module dependencies
+.PHONY: install
+install:
+	go mod tidy
+
+# =============================================================================
 # BUILDING
 # =============================================================================
 
@@ -80,6 +120,7 @@ lint-fix: lint
 format:
 	go mod tidy
 	go fmt ./...
+	dprint fmt
 
 ## Check go.mod tidiness (fails if not tidy)
 .PHONY: mod-tidy
