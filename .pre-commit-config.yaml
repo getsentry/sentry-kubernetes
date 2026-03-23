@@ -26,6 +26,28 @@ repos:
 
   - repo: local
     hooks:
+      - id: make-build
+        name: Build
+        description: "Run make build"
+        entry: make
+        language: system
+        args:
+          - "build"
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: make-test
+        name: Test
+        description: "Run make test"
+        entry: make
+        language: system
+        args:
+          - "test"
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       - id: make-vet
         name: Go Vet
         description: "Run go vet"
@@ -33,6 +55,17 @@ repos:
         language: system
         args:
           - "vet"
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: make-lint
+        name: Lint
+        description: "Run golangci-lint"
+        entry: make
+        language: system
+        args:
+          - "lint"
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
