@@ -20,7 +20,7 @@ func createJobInformer(ctx context.Context, factory informers.SharedInformerFact
 
 	var handler cache.ResourceEventHandlerFuncs
 
-	handler.AddFunc = func(obj interface{}) {
+	handler.AddFunc = func(obj any) {
 		job := obj.(*batchv1.Job)
 		logger.Debug().Msgf("ADD: Job Added to Store: %s\n", job.GetName())
 		err := runSentryCronsCheckin(ctx, job, EventHandlerAdd)
@@ -29,7 +29,7 @@ func createJobInformer(ctx context.Context, factory informers.SharedInformerFact
 		}
 	}
 
-	handler.UpdateFunc = func(oldObj, newObj interface{}) {
+	handler.UpdateFunc = func(oldObj, newObj any) {
 		oldJob := oldObj.(*batchv1.Job)
 		newJob := newObj.(*batchv1.Job)
 
@@ -40,7 +40,7 @@ func createJobInformer(ctx context.Context, factory informers.SharedInformerFact
 		}
 	}
 
-	handler.DeleteFunc = func(obj interface{}) {
+	handler.DeleteFunc = func(obj any) {
 		job := obj.(*batchv1.Job)
 		logger.Debug().Msgf("DELETE: Job deleted from Store: %s\n", job.GetName())
 		err := runSentryCronsCheckin(ctx, job, EventHandlerDelete)

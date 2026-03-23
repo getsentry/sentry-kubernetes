@@ -45,7 +45,7 @@ func initSentrySDK() {
 }
 
 func setKubernetesSentryContext(config *rest.Config) {
-	kubernetesContext := map[string]interface{}{
+	kubernetesContext := map[string]any{
 		"API endpoint": config.Host,
 	}
 
@@ -78,8 +78,8 @@ func setGlobalSentryTags() {
 		}
 		key, value := strings.TrimSpace(pair[0]), strings.TrimSpace(pair[1])
 		tagPrefix := "SENTRY_K8S_GLOBAL_TAG_"
-		if strings.HasPrefix(key, tagPrefix) {
-			tagKey := strings.TrimPrefix(key, tagPrefix)
+		if after, ok := strings.CutPrefix(key, tagPrefix); ok {
+			tagKey := after
 			globalLogger.Info().Msgf("Global tag detected: %s=%s", tagKey, value)
 			setTagIfNotEmpty(scope, tagKey, value)
 		}

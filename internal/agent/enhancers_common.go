@@ -115,8 +115,8 @@ func runCommonEnhancer(ctx context.Context, scope *sentry.Scope, sentryEvent *se
 
 	// Remove the "combined from similar events" prefix
 	combinedFromSimilarEventsPrefix := "(combined from similar events):"
-	if strings.HasPrefix(sentryEvent.Message, combinedFromSimilarEventsPrefix) {
-		newMessage := strings.TrimPrefix(sentryEvent.Message, combinedFromSimilarEventsPrefix)
+	if after, ok := strings.CutPrefix(sentryEvent.Message, combinedFromSimilarEventsPrefix); ok {
+		newMessage := after
 		sentryEvent.Message = strings.TrimSpace(newMessage)
 		scope.SetTag("combined_from_similar", "true")
 	}

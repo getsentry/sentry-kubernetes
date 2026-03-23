@@ -89,7 +89,7 @@ func getClusterURL(clusterLocation string, clusterName string, projectID string)
 	)
 }
 
-func readGoogleMetadata(url string, output interface{}) error {
+func readGoogleMetadata(url string, output any) error {
 	client := http.Client{}
 
 	req, _ := http.NewRequest("GET", url, nil)

@@ -20,7 +20,7 @@ func createCronjobInformer(ctx context.Context, factory informers.SharedInformer
 
 	var handler cache.ResourceEventHandlerFuncs
 
-	handler.AddFunc = func(obj interface{}) {
+	handler.AddFunc = func(obj any) {
 		cronjob := obj.(*batchv1.CronJob)
 		logger.Debug().Msgf("ADD: CronJob Added to Store: %s\n", cronjob.GetName())
 		_, ok := cronsMetaData.getCronsMonitorData(cronjob.Name)
@@ -31,7 +31,7 @@ func createCronjobInformer(ctx context.Context, factory informers.SharedInformer
 		}
 	}
 
-	handler.DeleteFunc = func(obj interface{}) {
+	handler.DeleteFunc = func(obj any) {
 		cronjob := obj.(*batchv1.CronJob)
 		logger.Debug().Msgf("DELETE: CronJob deleted from Store: %s\n", cronjob.GetName())
 		_, ok := cronsMetaData.getCronsMonitorData(cronjob.Name)
