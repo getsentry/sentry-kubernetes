@@ -207,6 +207,8 @@ func watchPodsInNamespaceForever(ctx context.Context, config *rest.Config, names
 				time.Sleep(b.duration())
 			} else {
 				b.reset()
+				// Prevent busy loop if the watcher channel closes immediately
+				time.Sleep(time.Second)
 			}
 		}
 	}

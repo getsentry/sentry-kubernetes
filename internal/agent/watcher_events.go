@@ -252,6 +252,8 @@ func watchEventsInNamespaceForever(ctx context.Context, config *rest.Config, nam
 				time.Sleep(b.duration())
 			} else {
 				b.reset()
+				// Prevent busy loop if the watcher channel closes immediately
+				time.Sleep(time.Second)
 			}
 			watchSince = time.Now()
 		}
