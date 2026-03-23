@@ -1,7 +1,9 @@
 # syntax=docker/dockerfile:1
 
 # Build the application
-FROM golang:1.20 AS build-stage
+FROM golang:1.22-alpine AS build-stage
+
+RUN apk add --no-cache git ca-certificates
 
 WORKDIR /app
 
@@ -10,16 +12,16 @@ RUN go mod download
 
 COPY *.go ./
 
-ENV CGO_ENABLED=0 GOOS=${TARGETPLATFORM} GOARCH=${TARGETARCH} GO111MODULE=on
-
-RUN go build -o /bin/sentry-kubernetes
+ARG TARGETOS TARGETARCH
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+    go build -ldflags="-s -w" -trimpath -o /bin/sentry-kubernetes
 
 # Run the tests in the container
 FROM build-stage AS test-stage
 RUN go test -v ./...
 
 # Use a slim container
-FROM gcr.io/distroless/static-debian11 AS build-slim-stage
+FROM gcr.io/distroless/static-debian12 AS build-slim-stage
 
 USER nonroot:nonroot
 
