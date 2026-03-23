@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
-# Build the application
-FROM golang:1.26-alpine AS build-stage
+# Build stage
+FROM golang:1.26-alpine AS builder
 
 RUN apk add --no-cache git ca-certificates
 
@@ -17,17 +17,9 @@ ARG TARGETOS TARGETARCH
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build -ldflags="-s -w" -trimpath -o /bin/sentry-kubernetes ./cmd/agent
 
-# Run the tests in the container
-FROM build-stage AS test-stage
-RUN go test -v ./...
+# Runtime stage - use distroless for minimal attack surface
+FROM gcr.io/distroless/static:nonroot
 
-# Use a slim container
-FROM gcr.io/distroless/static-debian12 AS build-slim-stage
-
-USER nonroot:nonroot
-
-WORKDIR /
-
-COPY --from=build-stage /bin/sentry-kubernetes /bin/sentry-kubernetes
+COPY --from=builder /bin/sentry-kubernetes /bin/sentry-kubernetes
 
 ENTRYPOINT ["/bin/sentry-kubernetes"]
