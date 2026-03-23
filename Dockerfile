@@ -10,11 +10,12 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY *.go ./
+COPY cmd/ cmd/
+COPY internal/ internal/
 
 ARG TARGETOS TARGETARCH
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go build -ldflags="-s -w" -trimpath -o /bin/sentry-kubernetes
+    go build -ldflags="-s -w" -trimpath -o /bin/sentry-kubernetes ./cmd/agent
 
 # Run the tests in the container
 FROM build-stage AS test-stage

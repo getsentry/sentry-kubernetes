@@ -64,7 +64,7 @@ build:
 .PHONY: build-dist
 build-dist:
 	mkdir -p dist
-	go build -ldflags="-s -w" -trimpath -o dist/sentry-kubernetes .
+	go build -ldflags="-s -w" -trimpath -o dist/sentry-kubernetes ./cmd/agent
 
 ## Build Docker image
 .PHONY: build-docker

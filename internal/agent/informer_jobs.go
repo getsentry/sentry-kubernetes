@@ -1,0 +1,61 @@
+package agent
+
+import (
+	"context"
+	"os"
+
+	"github.com/rs/zerolog"
+	batchv1 "k8s.io/api/batch/v1"
+
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/tools/cache"
+)
+
+func createJobInformer(ctx context.Context, factory informers.SharedInformerFactory) cache.SharedIndexInformer {
+	logger := zerolog.Ctx(ctx)
+
+	logger.Debug().Msgf("starting job informer\n")
+
+	jobInformer := factory.Batch().V1().Jobs().Informer()
+
+	var handler cache.ResourceEventHandlerFuncs
+
+	handler.AddFunc = func(obj interface{}) {
+		job := obj.(*batchv1.Job)
+		logger.Debug().Msgf("ADD: Job Added to Store: %s\n", job.GetName())
+		err := runSentryCronsCheckin(ctx, job, EventHandlerAdd)
+		if err != nil {
+			return
+		}
+	}
+
+	handler.UpdateFunc = func(oldObj, newObj interface{}) {
+		oldJob := oldObj.(*batchv1.Job)
+		newJob := newObj.(*batchv1.Job)
+
+		if oldJob.ResourceVersion == newJob.ResourceVersion {
+			logger.Debug().Msgf("UPDATE: Event sync %s/%s\n", oldJob.GetNamespace(), oldJob.GetName())
+		} else {
+			_ = runSentryCronsCheckin(ctx, newJob, EventHandlerUpdate)
+		}
+	}
+
+	handler.DeleteFunc = func(obj interface{}) {
+		job := obj.(*batchv1.Job)
+		logger.Debug().Msgf("DELETE: Job deleted from Store: %s\n", job.GetName())
+		err := runSentryCronsCheckin(ctx, job, EventHandlerDelete)
+		if err != nil {
+			return
+		}
+	}
+
+	// Check if cronjob monitoring is enabled
+	if isTruthy(os.Getenv("SENTRY_K8S_MONITOR_CRONJOBS")) {
+		logger.Info().Msgf("Add job informer handlers for cronjob monitoring")
+		jobInformer.AddEventHandler(handler)
+	} else {
+		logger.Info().Msgf("Cronjob monitoring is disabled")
+	}
+
+	return jobInformer
+}
