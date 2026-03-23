@@ -195,6 +195,8 @@ func watchPodsInNamespaceForever(ctx context.Context, config *rest.Config, names
 	// and caching with the indexers
 	go startInformers(ctx, namespace) //nolint:errcheck
 
+	b := newBackoff()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -202,9 +204,10 @@ func watchPodsInNamespaceForever(ctx context.Context, config *rest.Config, names
 		default:
 			if err := watchPodsInNamespace(ctx, namespace); err != nil {
 				logger.Error().Msgf("Error while watching pods %s: %s", where, err)
+				time.Sleep(b.duration())
+			} else {
+				b.reset()
 			}
-			// Note: some events might be lost when we're sleeping here
-			time.Sleep(time.Second * 1)
 		}
 	}
 }

@@ -240,6 +240,8 @@ func watchEventsInNamespaceForever(ctx context.Context, config *rest.Config, nam
 
 	ctx = setClientsetOnContext(ctx, clientset)
 
+	b := newBackoff()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -247,9 +249,11 @@ func watchEventsInNamespaceForever(ctx context.Context, config *rest.Config, nam
 		default:
 			if err := watchEventsInNamespace(ctx, namespace, watchSince); err != nil {
 				logger.Error().Msgf("Error while watching events %s: %s", where, err)
+				time.Sleep(b.duration())
+			} else {
+				b.reset()
 			}
 			watchSince = time.Now()
-			time.Sleep(time.Second * 1)
 		}
 	}
 }
