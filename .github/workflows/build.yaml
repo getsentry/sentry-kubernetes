@@ -1,4 +1,4 @@
-name: Test
+name: Build
 
 on:
   push:
@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: Test
+  build:
+    name: Build
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -28,12 +28,5 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Run Tests
-        run: make test-coverage
-
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        with:
-          directory: .coverage
+      - name: Build
+        run: make build

@@ -1,11 +1,10 @@
-name: golangci-lint
+name: Lint
 
 on:
   push:
-    branches:
-      - master
-      - main
+    branches: [main, master]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -14,23 +13,23 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-defaults:
-  run:
-    shell: bash
-
 jobs:
-  golangci:
-    name: lint
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: golangci-lint
+          cache: true
+
+      - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: v2.11
-          only-new-issues: true
           args: --timeout=10m

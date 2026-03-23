@@ -1,0 +1,48 @@
+name: Format
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install dprint
+        run: |
+          curl -fsSL https://dprint.dev/install.sh | sh -s > /dev/null
+          echo "$HOME/.dprint/bin" >> $GITHUB_PATH
+
+      - name: Run Format Check
+        run: make format
+
+      - name: Check for Formatting Changes
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "❌ Some code is not formatted correctly. Please run 'make format' and commit the changes."
+            git status
+            git diff
+            exit 1
+          else
+            echo "✅ All code is formatted correctly."
+          fi
