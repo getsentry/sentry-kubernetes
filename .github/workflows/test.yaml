@@ -1,4 +1,5 @@
 name: Test
+
 on:
   push:
     branches:
@@ -8,22 +9,30 @@ on:
       - test/**
       - build/**
   pull_request:
+
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 defaults:
   run:
     shell: bash
+
 jobs:
   test:
     name: All
-    runs-on: ${{ matrix.os }}-latest
+    runs-on: ubuntu-latest
     env:
       GOFLAGS: "-mod=readonly"
+    timeout-minutes: 10
     steps:
-      - uses: actions/setup-go@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go }}
-      - uses: actions/checkout@v3
+          go-version-file: go.mod
       - name: Build
         run: make build
       - name: Vet
@@ -33,15 +42,8 @@ jobs:
       - name: Test
         run: make test-coverage
       - name: Upload coverage reports to Codecov
-        # https://github.com/codecov/codecov-action/releases/tag/v3.1.4
-        uses: codecov/codecov-action@eaaf4bedf32dbdc6b720b63067d99c4d77d6047d
+        uses: codecov/codecov-action@v4
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
           directory: .coverage
-    timeout-minutes: 10
-    strategy:
-      matrix:
-        go: ["1.20"]
-        os: [ubuntu]
-      fail-fast: false
