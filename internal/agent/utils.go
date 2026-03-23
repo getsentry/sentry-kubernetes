@@ -34,6 +34,7 @@ func removeDuplicates(slice []string) []string {
 	seen := make(map[string]struct{}, len(slice))
 	for _, s := range slice {
 		if _, found := seen[s]; !found {
+			seen[s] = struct{}{}
 			res = append(res, s)
 		}
 	}
