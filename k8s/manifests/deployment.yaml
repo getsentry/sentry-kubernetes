@@ -17,13 +17,13 @@ spec:
         app: sentry-kubernetes
     spec:
       containers:
-        - image: getsentry/sentry-kubernetes:b7bf56753286880bb47a9caaa8621a3bf6c6b4d5
+        - image: ghcr.io/getsentry/sentry-kubernetes:latest
           name: sentry-kubernetes
           env:
             - name: SENTRY_K8S_LOG_LEVEL
               value: debug
             - name: SENTRY_DSN
-              # FIXME
+              # TODO: Set your Sentry DSN here
               value: ""
             - name: SENTRY_K8S_INTEGRATION_GKE_ENABLED
               value: "1"
