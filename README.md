@@ -185,13 +185,13 @@ In the Sentry Crons tab of the corresponding project, we may see the following:
 
    b. Pass a valid Sentry DSN to an environment variable named `SENTRY_DSN` ([https://docs.sentry.io/product/sentry-basics/concepts/dsn-explainer/](https://docs.sentry.io/product/sentry-basics/concepts/dsn-explainer/))
 
-   c. At the root of the repository directory, build the Go module with the command
+   c. At the root of the repository directory, initialize the project and build
 
-   `make build`
+   `make init && make build`
 
    d. Run the module outside of the k8s cluster by executing the command
 
-   `go run .`
+   `go run ./cmd/agent`
 
    which now starts up the process that automatically detects the cluster configuration in order to detect events
 

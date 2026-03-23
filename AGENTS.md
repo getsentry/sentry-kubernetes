@@ -54,13 +54,19 @@ Co-Authored-By: (the agent model's name and attribution byline)
 - Enhancers enrich Sentry events with K8s metadata
 - Supports custom DSNs via `k8s.sentry.io/dsn` annotation
 
+## Setup
+
+- First-time setup: `make init` (installs Brew deps, Go modules, pre-commit hooks)
+- Pre-commit hooks run: build, test, go fix, vet, lint, and dprint formatting
+
 ## Key Conventions
 
 - Logging: `github.com/rs/zerolog`
-- K8s client: `k8s.io/client-go` v0.25
+- K8s client: `k8s.io/client-go` v0.35
 - Error reporting: `github.com/getsentry/sentry-go`
-- Docker: multi-stage build, `gcr.io/distroless/static-debian12` runtime
+- Docker: multi-stage build, `gcr.io/distroless/static:nonroot` runtime
 - RBAC: read-only (`watch`, `list`, `get` only)
+- Run `go fix ./...` to apply Go modernizations (also in pre-commit)
 
 ## Environment Variables
 
