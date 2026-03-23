@@ -40,28 +40,29 @@ func startInformers(ctx context.Context, namespace string) error {
 	deploymentInformer = createDeploymentInformer(ctx, factory)
 
 	// Channel to tell the factory to stop the informers
-	doneChan := make(chan struct{})
-	factory.Start(doneChan)
+	stopCh := make(chan struct{})
+	go func() {
+		<-ctx.Done()
+		close(stopCh)
+	}()
+	factory.Start(stopCh)
 
-	// Sync the cronjob informer cache
-	if ok := cache.WaitForCacheSync(doneChan, cronjobInformer.HasSynced); !ok {
+	// Sync the informer caches
+	if ok := cache.WaitForCacheSync(stopCh, cronjobInformer.HasSynced); !ok {
 		return errors.New("cronjob informer failed to sync")
 	}
-	// Sync the job informer cache
-	if ok := cache.WaitForCacheSync(doneChan, jobInformer.HasSynced); !ok {
+	if ok := cache.WaitForCacheSync(stopCh, jobInformer.HasSynced); !ok {
 		return errors.New("job informer failed to sync")
 	}
-	// Sync the replicaset informer cache
-	if ok := cache.WaitForCacheSync(doneChan, replicasetInformer.HasSynced); !ok {
+	if ok := cache.WaitForCacheSync(stopCh, replicasetInformer.HasSynced); !ok {
 		return errors.New("replicaset informer failed to sync")
 	}
-	// Sync the deployment informer cache
-	if ok := cache.WaitForCacheSync(doneChan, deploymentInformer.HasSynced); !ok {
+	if ok := cache.WaitForCacheSync(stopCh, deploymentInformer.HasSynced); !ok {
 		return errors.New("deployment informer failed to sync")
 	}
 
-	// Wait for the channel to be closed
-	<-doneChan
+	// Block until context is cancelled
+	<-stopCh
 
 	return nil
 }

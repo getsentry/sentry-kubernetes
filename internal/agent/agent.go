@@ -3,7 +3,9 @@ package agent
 import (
 	"context"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -64,10 +66,14 @@ func Run() {
 		namespaces = []string{v1.NamespaceAll}
 	}
 
-	ctx := globalLogger.Logger.WithContext(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	ctx = globalLogger.Logger.WithContext(ctx)
 	startEventWatchers(ctx, config, namespaces)
 	startPodWatchers(ctx, config, namespaces)
 
-	// Sleep forever
-	select {}
+	// Block until a shutdown signal is received
+	<-ctx.Done()
+	globalLogger.Info().Msg("Shutdown signal received, exiting...")
 }
