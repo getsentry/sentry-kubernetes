@@ -2,6 +2,8 @@ module github.com/getsentry/sentry-kubernetes
 
 go 1.26.1
 
+toolchain go1.26.10
+
 require (
 	github.com/getsentry/sentry-go v0.43.0
 	github.com/rs/zerolog v1.29.1
